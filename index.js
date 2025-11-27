@@ -17,7 +17,7 @@ if (!TOKEN) {
     process.exit(1);
 }
 
-if (!CHAT_ID) {
+if (!OWNER_CHAT_ID) {
     console.error("❌ CHAT_ID não configurado no .env");
     process.exit(1);
 }
