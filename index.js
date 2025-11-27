@@ -61,18 +61,23 @@ Funções disponíveis:
 // COMMAND: /price (PancakeSwap V3)
 // ============================
 bot.onText(/\/price/, async (msg) => {
+    const chatId = msg.chat.id;
+
     try {
-        const data = await getV3Price(POOL_V3, RPC_URL);
+        const poolAddress = process.env.PAIR_CONTRACT; // endereço V3
+        const { price, token0, token1 } = await getV3Price(poolAddress);
+
         bot.sendMessage(
-            msg.chat.id,
-            `💰 *Preço HBR/WBNB:* ${data.price.toFixed(12)}\nTokens: ${data.token0}/${data.token1}`,
+            chatId,
+            `💰 *Preço HBR/VBNB (V3):* ${price.toFixed(12)} (${token0}/${token1})`,
             { parse_mode: "Markdown" }
         );
     } catch (err) {
         console.error("Erro no /price:", err.message || err);
-        bot.sendMessage(msg.chat.id, "❌ Erro ao buscar preço da pool V3. Verifique RPC, endereço da pool e log do servidor.");
+        bot.sendMessage(chatId, "Erro no /price: verifique RPC, endereço da pool e logs do servidor.");
     }
 });
+
 
 // ============================
 // COMMAND: /tokeninfo
