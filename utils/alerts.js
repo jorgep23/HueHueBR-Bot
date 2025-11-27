@@ -67,9 +67,12 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
 
       if (isBuy) {
         try {
-          await bot.sendMessage(chatId,
-            `💰 *HBR BUY detected*\nBlock: ${ev.blockNumber}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
-            { parse_mode: "Markdown" });
+          await bot.sendMessage(
+  chatId,
+  `HBR BUY detected\nBlock: ${ev.blockNumber}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+  { parse_mode: "Markdown" }
+);
+
         } catch (err) {
           console.warn("Warning: telegram send failed:", err?.message || err);
         }
@@ -104,9 +107,12 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
       const to = ev.returnValues.to;
       const id = ev.returnValues.tokenId;
       try {
-        await bot.sendMessage(chatId,
-          `🎨 *NFT Minted*\nToken ID: ${id}\nTo: ${to}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
-          { parse_mode: "Markdown" });
+        await bot.sendMessage(
+  chatId,
+  `NFT Minted\nToken ID: ${id}\nTo: ${to}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+  { parse_mode: "Markdown" }
+);
+
       } catch (err) {
         console.warn("Warning: telegram send failed:", err?.message || err);
       }
