@@ -121,19 +121,55 @@ Use /mint para mintar.`,
 
 
 // ============================
-// COMMAND: /mint
+// COMMAND: /mint <quantidade> (avançado)
 // ============================
-bot.onText(/\/mint/, async (msg) => {
+bot.onText(/\/mint(?: (\d+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
-    try {
-  const priceWei = await nftContract.methods.mintPrice().call();
-  const price = web3.utils.fromWei(priceWei, "ether");
-  console.log("Preço do mint:", price, "ETH");
-} catch (err) {
-  console.error("Erro ao buscar preço de mint:", err.message || err);
-}
+    const qtd = match[1] ? parseInt(match[1], 10) : 1; // quantidade padrão 1
 
+    if (isNaN(qtd) || qtd <= 0) {
+        bot.sendMessage(chatId, "❌ Quantidade inválida. Use /mint <quantidade>.");
+        return;
+    }
+
+    try {
+        // 1️⃣ Busca o preço do NFT
+        const priceWei = await nftContract.methods.mintPrice().call();
+        const priceBNB = parseFloat(web3.utils.fromWei(priceWei, "ether"));
+        const totalBNB = (priceBNB * qtd).toFixed(6);
+
+        // 2️⃣ Cria dados da transação
+        const mintData = nftContract.methods.mint(qtd).encodeABI();
+        const contractAddress = process.env.NFT_CONTRACT;
+
+        // 3️⃣ Gera link de transação para MetaMask / Trust Wallet
+        const txLink = `https://bscscan.com/address/${contractAddress}#writeContract`;
+
+        // 4️⃣ Envia mensagem com instruções
+        await bot.sendMessage(
+            chatId,
+            `🖼 *NFT Founders HueHueBR*  
+Quantidade: ${qtd}  
+Preço unitário: ${priceBNB} BNB  
+💰 Total: ${totalBNB} BNB  
+
+Para mintar seu NFT(s) com 1 clique:  
+1️⃣ Abra sua carteira (MetaMask, TrustWallet, etc.)  
+2️⃣ Clique no link abaixo para abrir o contrato no BscScan:  
+[Open Contract → mint](https://bscscan.com/address/${contractAddress}#writeContract)  
+3️⃣ Escolha a função *mint* e insira a quantidade: *${qtd}*  
+4️⃣ Confirme o envio de *${totalBNB} BNB*  
+5️⃣ Assine a transação na sua carteira
+
+✅ Transação pré-preenchida para facilitar o mint.`,
+            { parse_mode: "Markdown", disable_web_page_preview: true }
+        );
+    } catch (err) {
+        console.error("Erro ao gerar link de mint:", err.message || err);
+        bot.sendMessage(chatId, `❌ Erro ao tentar mintar NFT: ${err.message || err}`);
+    }
 });
+
 
 // ============================
 // COMMAND: /buy
