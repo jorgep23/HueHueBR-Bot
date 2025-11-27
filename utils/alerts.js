@@ -1,92 +1,96 @@
-const { web3, tokenContract, nftContract, TOKEN_ADDRESS } = require("./web3");
+const { web3, tokenContract, nftContract, pairContract } = require("./web3");
 
-let lastBuyBlock = null;
-let lastMintBlock = null;
+let lastBlockBuy = 0;
+let lastBlockMint = 0;
 
-// Evita spam de erros do Telegram
-function safeSend(bot, chatId, msg) {
-    bot.sendMessage(chatId, msg).catch(() => {});
-}
+async function startAlerts(bot, chatId) {
+    console.log("📡 Monitoramento iniciado...");
 
-// Monitor de compras de token
-async function checkTokenBuys(bot, chatId) {
-    try {
-        const currentBlock = Number(await web3.eth.getBlockNumber());
+    setInterval(async () => {
+        try {
+            const currentBlock = await web3.eth.getBlockNumber();
 
-        if (!lastBuyBlock) lastBuyBlock = currentBlock - 5;
+            //
+            // ====== MONITORAR COMPRAS ==============
+            //
+            const fromBlock = lastBlockBuy === 0
+                ? currentBlock - 5
+                : lastBlockBuy + 1;
 
-        const from = lastBuyBlock;
-        const to = currentBlock;
+            if (fromBlock < 0) return;
 
-        const events = await tokenContract.getPastEvents("Transfer", {
-            fromBlock: from,
-            toBlock: to
-        });
+            const events = await pairContract.getPastEvents("Swap", {
+                fromBlock,
+                toBlock: "latest",
+            });
 
-        events.forEach(evt => {
-            const { from, to, value } = evt.returnValues;
+            events.forEach(ev => {
+                const { amount0In, amount1In, amount0Out, amount1Out } = ev.returnValues;
 
-            // Apenas compras: de pair/pancake para usuário
-            if (from.toLowerCase() === TOKEN_ADDRESS.toLowerCase()) return;
+                const isBuy = 
+                    BigInt(amount0In) > 0n && BigInt(amount1Out) > 0n;
 
-            if (Number(value) > 0) {
-                const amount = Number(web3.utils.fromWei(value, "ether"));
+                if (isBuy) {
+                    bot.sendMessage(
+                        chatId,
+                        `💰 *COMPRA Detectada!*\n\n` +
+                        `Token: HBR\n` +
+                        `Bloco: ${ev.blockNumber}\n` +
+                        `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
+                        { parse_mode: "Markdown" }
+                    );
+                }
+            });
 
-                safeSend(
-                    bot,
+            lastBlockBuy = currentBlock;
+
+        } catch (err) {
+            console.log("Erro monitorando compras:", err.message);
+        }
+    }, 8000);
+
+
+
+
+    //
+    // ====== MONITORAR MINT DE NFT ==============
+    //
+    setInterval(async () => {
+        try {
+            const currentBlock = await web3.eth.getBlockNumber();
+
+            const fromBlock = lastBlockMint === 0 
+                ? currentBlock - 5
+                : lastBlockMint + 1;
+
+            if (fromBlock < 0) return;
+
+            const mints = await nftContract.getPastEvents("Transfer", {
+                filter: { from: "0x0000000000000000000000000000000000000000" },
+                fromBlock,
+                toBlock: "latest",
+            });
+
+            for (let ev of mints) {
+                const to = ev.returnValues.to;
+                const id = ev.returnValues.tokenId;
+
+                bot.sendMessage(
                     chatId,
-                    `💸 *Compra Detectada!*\n\n👤 Para: \`${to}\`\n💰 Quantidade: *${amount} HBR*`
+                    `🎨 *Novo NFT Mintado!*\n\n` +
+                    `ID: ${id}\n` +
+                    `Para: ${to}\n` +
+                    `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
+                    { parse_mode: "Markdown" }
                 );
             }
-        });
 
-        lastBuyBlock = currentBlock;
+            lastBlockMint = currentBlock;
 
-    } catch (err) {
-        console.log("Erro monitorando compras:", err.message);
-    }
+        } catch (err) {
+            console.log("Erro monitorando mint de NFT:", err.message);
+        }
+    }, 8000);
 }
 
-// Monitor de mint da coleção NFT
-async function checkMints(bot, chatId) {
-    try {
-        const currentBlock = Number(await web3.eth.getBlockNumber());
-
-        if (!lastMintBlock) lastMintBlock = currentBlock - 5;
-
-        const events = await nftContract.getPastEvents("Transfer", {
-            fromBlock: lastMintBlock,
-            toBlock: currentBlock
-        });
-
-        events.forEach(evt => {
-            const { from, to, tokenId } = evt.returnValues;
-
-            // Mint = Transfer do endereço ZERO
-            if (from === "0x0000000000000000000000000000000000000000") {
-                safeSend(
-                    bot,
-                    chatId,
-                    `🖼️ *Novo NFT Mintado!*\n\n👤 Dono: \`${to}\`\n🆔 Token ID: *${tokenId}*`
-                );
-            }
-        });
-
-        lastMintBlock = currentBlock;
-
-    } catch (err) {
-        console.log("Erro monitorando mint de NFT:", err.message);
-    }
-}
-
-// Loop global
-function startAlerts(bot, chatId) {
-    console.log("🔔 Alerts monitor ativo...");
-
-    setInterval(() => checkTokenBuys(bot, chatId), 8000);
-    setInterval(() => checkMints(bot, chatId), 9000);
-}
-
-module.exports = {
-    startAlerts
-};
+module.exports = { startAlerts };
