@@ -126,16 +126,13 @@ Use /mint para mintar.`,
 bot.onText(/\/mint/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-        const mintPrice = await nftContract.methods.price().call();
-        const mintBnB = web3.utils.fromWei(mintPrice, "ether");
-        bot.sendMessage(
-            chatId,
-            `🖼 *Mint de NFT HueHueBR Founders*\n\nPreço: *${mintBnB} BNB* por NFT\n\nEnvie agora para executar o mint:\n\n\`${process.env.NFT_CONTRACT}\``,
-            { parse_mode: "Markdown" }
-        );
-    } catch {
-        bot.sendMessage(chatId, "Erro ao buscar preço de mint.");
-    }
+  const priceWei = await nftContract.methods.mintPrice().call();
+  const price = web3.utils.fromWei(priceWei, "ether");
+  console.log("Preço do mint:", price, "ETH");
+} catch (err) {
+  console.error("Erro ao buscar preço de mint:", err.message || err);
+}
+
 });
 
 // ============================
