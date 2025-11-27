@@ -96,14 +96,22 @@ Use /price para ver o preço atual.`,
     );
 });
 
-// ============================
+// ===============================
 // COMMAND: /nftinfo
-// ============================
+// ===============================
 bot.onText(/\/nftinfo/, async (msg) => {
+    const chatId = msg.chat.id;
+
     try {
-        const total = await nftContract.methods.totalSupply().call();
+        let total = "N/A";
+
+        // Tenta pegar totalSupply() se existir
+        if (nftContract.methods.totalSupply) {
+            total = await nftContract.methods.totalSupply().call();
+        }
+
         bot.sendMessage(
-            msg.chat.id,
+            chatId,
             `🖼 *HueHueBR Founders NFT*
 Contrato: \`${process.env.NFT_CONTRACT}\`
 Supply mintado: ${total}/500
@@ -112,10 +120,12 @@ Funções: boosts, staking, recompensas.
 Use /mint para mintar.`,
             { parse_mode: "Markdown" }
         );
-    } catch {
-        bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT.");
+    } catch (err) {
+        console.error("Erro ao buscar informações do NFT:", err.message || err);
+        bot.sendMessage(chatId, "❌ Erro ao buscar informações do NFT. Verifique contrato e RPC.");
     }
 });
+
 
 // ============================
 // COMMAND: /mint
