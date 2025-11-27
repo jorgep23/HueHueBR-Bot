@@ -3,7 +3,7 @@ const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
 const { startAlerts } = require("./utils/alerts");
 const { web3, nftContract, pairContract } = require("./utils/web3");
-const { getV3Price } = require("./utils/price"); // <- arquivo price.js V3
+const { getV3Price } = require("./utils/price");
 
 const app = express();
 
