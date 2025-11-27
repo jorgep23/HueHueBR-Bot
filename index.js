@@ -29,7 +29,7 @@ console.log("🤖 Bot iniciado em modo POLLING...");
 
 // Mensagem padrão
 bot.on("message", (msg) => {
-    bot.sendMessage(msg.chat.id, "Bot está rodando! Monitoramento ativo.");
+    //bot.sendMessage(msg.chat.id, "Bot está rodando! Monitoramento ativo.");
 });
 
 // ============================
