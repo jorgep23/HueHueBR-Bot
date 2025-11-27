@@ -17,7 +17,7 @@ if (!TOKEN) {
     process.exit(1);
 }
 
-if (!OWNER_CHAT_ID) {
+if (!CHAT_ID) {
     console.error("❌ CHAT_ID não configurado no .env");
     process.exit(1);
 }
@@ -42,7 +42,7 @@ bot.on("message", (msg) => {
 // ============================
 // ALERTS AUTOMÁTICOS (CORRETO)
 // ============================
-startAlerts(bot, OWNER_CHAT_ID);
+startAlerts(bot, CHAT_ID);
 
 console.log("📡 Alerts started");
 
