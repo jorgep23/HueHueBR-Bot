@@ -1,15 +1,30 @@
 require("dotenv").config();
+const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
 const { startAlerts } = require("./utils/alerts");
+const { web3, nftContract, pairContract } = require("./utils/web3");
 
+const app = express();
+
+// ============================
+// VARIÁVEIS DO .env
+// ============================
 const TOKEN = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;  // <-- AQUI!!
+const CHAT_ID = process.env.CHAT_ID;
 
 if (!TOKEN) {
     console.error("❌ BOT_TOKEN não configurado no .env");
     process.exit(1);
 }
 
+if (!CHAT_ID) {
+    console.error("❌ CHAT_ID não configurado no .env");
+    process.exit(1);
+}
+
+// ============================
+// BOT EM MODO POLLING
+// ============================
 const bot = new TelegramBot(TOKEN, {
     polling: {
         interval: 300,
@@ -19,13 +34,17 @@ const bot = new TelegramBot(TOKEN, {
 
 console.log("🤖 Bot iniciado em modo POLLING...");
 
+// Mensagem padrão
 bot.on("message", (msg) => {
     bot.sendMessage(msg.chat.id, "Bot está rodando! Monitoramento ativo.");
 });
 
-// INICIA O MONITORAMENTO CORRETAMENTE
-startAlerts(bot, CHAT_ID);  // <-- SEM OWNER_CHAT_ID
+// ============================
+// ALERTS AUTOMÁTICOS (CORRETO)
+// ============================
+startAlerts(bot, CHAT_ID);
 
+console.log("📡 Alerts started");
 
 // ===============================
 //       COMMAND: /start
@@ -47,7 +66,7 @@ Funções disponíveis:
 });
 
 // ===============================
-//       COMMAND: /price
+// COMMAND: /price
 // ===============================
 bot.onText(/\/price/, async (msg) => {
     const chatId = msg.chat.id;
@@ -59,14 +78,18 @@ bot.onText(/\/price/, async (msg) => {
 
         const price = (reserve1 / reserve0).toFixed(12);
 
-        bot.sendMessage(chatId, `💰 *Preço HBR/WBNB:* ${price} BNB`, { parse_mode: "Markdown" });
+        bot.sendMessage(
+            chatId,
+            `💰 *Preço HBR/WBNB:* ${price} BNB`,
+            { parse_mode: "Markdown" }
+        );
     } catch (e) {
         bot.sendMessage(chatId, "Erro ao buscar preço da pool.");
     }
 });
 
 // ===============================
-//      COMMAND: /tokeninfo
+// COMMAND: /tokeninfo
 // ===============================
 bot.onText(/\/tokeninfo/, (msg) => {
     bot.sendMessage(
@@ -76,13 +99,14 @@ Contrato: \`${process.env.TOKEN_CONTRACT}\`
 Rede: BSC  
 Supply: 100.000.000 HBR  
 Par: HBR/WBNB  
+
 Use /price para ver o preço atual.`,
         { parse_mode: "Markdown" }
     );
 });
 
 // ===============================
-//      COMMAND: /nftinfo
+// COMMAND: /nftinfo
 // ===============================
 bot.onText(/\/nftinfo/, async (msg) => {
     try {
@@ -104,7 +128,7 @@ Use /mint para mintar.`,
 });
 
 // ===============================
-//       COMMAND: /mint
+// COMMAND: /mint
 // ===============================
 bot.onText(/\/mint/, async (msg) => {
     const chatId = msg.chat.id;
@@ -124,7 +148,7 @@ bot.onText(/\/mint/, async (msg) => {
 });
 
 // ===============================
-//       COMMAND: /buy
+// COMMAND: /buy
 // ===============================
 bot.onText(/\/buy/, (msg) => {
     bot.sendMessage(
@@ -144,7 +168,7 @@ https://pancakeswap.finance/swap?outputCurrency=${process.env.TOKEN_CONTRACT}`,
 });
 
 // ===============================
-//       COMMAND: /help
+// COMMAND: /help
 // ===============================
 bot.onText(/\/help/, (msg) => {
     bot.sendMessage(
@@ -161,12 +185,7 @@ bot.onText(/\/help/, (msg) => {
 });
 
 // ===============================
-//      ALERTAS AUTOMÁTICOS
-// ===============================
-startAlerts(bot, OWNER_CHAT_ID);
-
-// ===============================
-//      SERVIDOR EXPRESS
+// SERVIDOR EXPRESS (RAILWAY OK)
 // ===============================
 app.get("/", (req, res) => {
     res.send("HueHueBR Bot funcionando!");
@@ -176,5 +195,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor ativo na porta ${PORT}`);
 });
-
-console.log("🤖 HueHueBR Bot rodando...");
