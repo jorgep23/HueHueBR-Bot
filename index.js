@@ -3,13 +3,13 @@ const TelegramBot = require("node-telegram-bot-api");
 const { startAlerts } = require("./utils/alerts");
 
 const TOKEN = process.env.BOT_TOKEN;
+const CHAT_ID = process.env.CHAT_ID;  // <-- AQUI!!
 
 if (!TOKEN) {
     console.error("❌ BOT_TOKEN não configurado no .env");
     process.exit(1);
 }
 
-// 🔥 INICIAR SOMENTE EM POLLING (sem webhook)
 const bot = new TelegramBot(TOKEN, {
     polling: {
         interval: 300,
@@ -19,15 +19,13 @@ const bot = new TelegramBot(TOKEN, {
 
 console.log("🤖 Bot iniciado em modo POLLING...");
 
-const CHAT_ID = process.env.CHAT_ID;
-
 bot.on("message", (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "Bot está rodando! Monitoramento ativo.");
+    bot.sendMessage(msg.chat.id, "Bot está rodando! Monitoramento ativo.");
 });
 
-// Iniciar monitoramento
-startAlerts(bot, CHAT_ID || null);
+// INICIA O MONITORAMENTO CORRETAMENTE
+startAlerts(bot, CHAT_ID);  // <-- SEM OWNER_CHAT_ID
+
 
 // ===============================
 //       COMMAND: /start
