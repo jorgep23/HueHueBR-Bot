@@ -1,73 +1,66 @@
-const { web3, tokenContract, nftContract, pairContract } = require("./web3");
+const { web3, nftContract, pairContract } = require("./web3");
 
-let lastBlockBuy = 0;
-let lastBlockMint = 0;
+let lastBlockBuy = 0n;
+let lastBlockMint = 0n;
+
+function safeBlock(num) {
+    return num < 0n ? 0n : num;
+}
 
 async function startAlerts(bot, chatId) {
     console.log("📡 Monitoramento iniciado...");
 
+    // ========= COMPRA DE TOKEN ==========
     setInterval(async () => {
         try {
-            const currentBlock = await web3.eth.getBlockNumber();
+            const currentBlock = BigInt(await web3.eth.getBlockNumber());
 
-            //
-            // ====== MONITORAR COMPRAS ==============
-            //
-            const fromBlock = lastBlockBuy === 0
-                ? currentBlock - 5
-                : lastBlockBuy + 1;
-
-            if (fromBlock < 0) return;
+            const fromBlock =
+                lastBlockBuy === 0n
+                    ? safeBlock(currentBlock - 5n)
+                    : lastBlockBuy + 1n;
 
             const events = await pairContract.getPastEvents("Swap", {
-                fromBlock,
+                fromBlock: Number(fromBlock),
                 toBlock: "latest",
             });
 
-            events.forEach(ev => {
-                const { amount0In, amount1In, amount0Out, amount1Out } = ev.returnValues;
+            for (let ev of events) {
+                const { amount0In, amount1Out } = ev.returnValues;
 
-                const isBuy = 
+                const isBuy =
                     BigInt(amount0In) > 0n && BigInt(amount1Out) > 0n;
 
                 if (isBuy) {
                     bot.sendMessage(
                         chatId,
-                        `💰 *COMPRA Detectada!*\n\n` +
-                        `Token: HBR\n` +
-                        `Bloco: ${ev.blockNumber}\n` +
-                        `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
+                        `💰 *COMPRA DETECTADA!*\n\n` +
+                            `Bloco: ${ev.blockNumber}\n` +
+                            `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
                         { parse_mode: "Markdown" }
                     );
                 }
-            });
+            }
 
             lastBlockBuy = currentBlock;
-
         } catch (err) {
             console.log("Erro monitorando compras:", err.message);
         }
     }, 8000);
 
-
-
-
-    //
-    // ====== MONITORAR MINT DE NFT ==============
-    //
+    // ========= MINT DE NFT ==========
     setInterval(async () => {
         try {
-            const currentBlock = await web3.eth.getBlockNumber();
+            const currentBlock = BigInt(await web3.eth.getBlockNumber());
 
-            const fromBlock = lastBlockMint === 0 
-                ? currentBlock - 5
-                : lastBlockMint + 1;
-
-            if (fromBlock < 0) return;
+            const fromBlock =
+                lastBlockMint === 0n
+                    ? safeBlock(currentBlock - 5n)
+                    : lastBlockMint + 1n;
 
             const mints = await nftContract.getPastEvents("Transfer", {
                 filter: { from: "0x0000000000000000000000000000000000000000" },
-                fromBlock,
+                fromBlock: Number(fromBlock),
                 toBlock: "latest",
             });
 
@@ -77,16 +70,15 @@ async function startAlerts(bot, chatId) {
 
                 bot.sendMessage(
                     chatId,
-                    `🎨 *Novo NFT Mintado!*\n\n` +
-                    `ID: ${id}\n` +
-                    `Para: ${to}\n` +
-                    `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
+                    `🎨 *NOVO NFT MINTADO!*\n\n` +
+                        `ID: ${id}\n` +
+                        `Para: ${to}\n` +
+                        `Tx: https://bscscan.com/tx/${ev.transactionHash}`,
                     { parse_mode: "Markdown" }
                 );
             }
 
             lastBlockMint = currentBlock;
-
         } catch (err) {
             console.log("Erro monitorando mint de NFT:", err.message);
         }
