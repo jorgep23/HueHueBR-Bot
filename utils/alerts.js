@@ -5,8 +5,8 @@ let lastBlockBuy = 0n;
 let lastBlockMint = 0n;
 
 // how many blocks to check each interval (keep small to avoid RPC limits)
-const BLOCK_RANGE = 2n;
-const INTERVAL_MS = 15000;
+const BLOCK_RANGE = 1n;
+const INTERVAL_MS = 20000;
 
 function safeBlock(bn) {
   return bn < 0n ? 0n : bn;
