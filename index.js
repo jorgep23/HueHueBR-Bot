@@ -1,38 +1,33 @@
-const express = require("express");
-const TelegramBot = require("node-telegram-bot-api");
 require("dotenv").config();
-
-const app = express();
-app.use(express.json());
-
-// Utils
-const { web3, tokenContract, nftContract, pairContract } = require("./utils/web3");
+const TelegramBot = require("node-telegram-bot-api");
 const { startAlerts } = require("./utils/alerts");
 
-// Detecta ambiente
-const isProd = process.env.NODE_ENV === "production";
+const TOKEN = process.env.BOT_TOKEN;
 
-// BOT
-const bot = new TelegramBot(process.env.BOT_TOKEN, {
-    polling: !isProd
+if (!TOKEN) {
+    console.error("❌ BOT_TOKEN não configurado no .env");
+    process.exit(1);
+}
+
+// 🔥 INICIAR SOMENTE EM POLLING (sem webhook)
+const bot = new TelegramBot(TOKEN, {
+    polling: {
+        interval: 300,
+        autoStart: true
+    }
 });
 
-const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
+console.log("🤖 Bot iniciado em modo POLLING...");
 
-// ===============================
-//      WEBHOOK (Railway)
-// ===============================
-if (isProd) {
-    const WEBHOOK_URL = `${process.env.WEBHOOK_URL}/webhook`;
+const CHAT_ID = process.env.CHAT_ID;
 
-    bot.setWebHook(WEBHOOK_URL);
-    console.log("🌐 Webhook registrado:", WEBHOOK_URL);
+bot.on("message", (msg) => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, "Bot está rodando! Monitoramento ativo.");
+});
 
-    app.post("/webhook", (req, res) => {
-        bot.processUpdate(req.body);
-        res.sendStatus(200);
-    });
-}
+// Iniciar monitoramento
+startAlerts(bot, CHAT_ID || null);
 
 // ===============================
 //       COMMAND: /start
