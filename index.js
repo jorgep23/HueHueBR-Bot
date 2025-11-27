@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
 const { startAlerts } = require("./utils/alerts");
+const { startAlerts, getTotalMinted } = require("./utils/alerts");
 const { web3, nftContract, pairContract } = require("./utils/web3");
 const { getV3Price } = require("./utils/price");
 
@@ -99,19 +100,24 @@ Use /price para ver o preço atual.`,
 // ===============================
 // COMMAND: /nftinfo
 // ===============================
-
 bot.onText(/\/nftinfo/, async (msg) => {
-  try {
-    const total = await getTotalMinted(); // await só funciona dentro de async
-    bot.sendMessage(
-      msg.chat.id,
-      `🖼 *HueHueBR Founders NFT*\nSupply mintado: ${total}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
-      { parse_mode: "Markdown" }
-    );
-  } catch (err) {
-    console.error("Erro ao buscar informações do NFT:", err.message || err);
-    bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT. RPC pode estar sobrecarregado.");
-  }
+    try {
+        const total = await getTotalMinted();
+
+        bot.sendMessage(
+            msg.chat.id,
+            `🖼 *HueHueBR Founders NFT*
+Contrato: \`${process.env.NFT_CONTRACT}\`
+Supply mintado: ${total}/500
+Funções: boosts, staking, recompensas.
+
+Use /mint para mintar.`,
+            { parse_mode: "Markdown" }
+        );
+    } catch (err) {
+        bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT.");
+        console.log("Erro ao buscar informações do NFT:", err.message || err);
+    }
 });
 
 
