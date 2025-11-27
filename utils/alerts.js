@@ -21,7 +21,7 @@ return await contract.getPastEvents(eventName, options);
 } catch (err) {
 if (err.message.includes("limit exceeded")) {
 attempts++;
-console.log(`Limit exceeded, retry ${attempts}...`);
+console.log("Limit exceeded, retry " + attempts + "...");
 await new Promise(r => setTimeout(r, 5000));
 } else {
 throw err;
@@ -50,7 +50,7 @@ toBlock: to
 totalMinted += events.length;
 nftCache.lastBlock = to + 1;
 } catch (err) {
-console.warn(`Erro ao buscar eventos de ${from} a ${to}:`, err.message || err);
+console.warn("Erro ao buscar eventos de " + from + " a " + to + ": " + (err.message || err));
 }
 }
 
@@ -62,6 +62,7 @@ return totalMinted;
 async function startAlerts(bot, chatId) {
 console.log("Alerts started");
 
+// Token buy alerts
 setInterval(async () => {
 try {
 const current = BigInt(await web3.eth.getBlockNumber());
@@ -88,11 +89,11 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
         try {
           await bot.sendMessage(
             chatId,
-            `HBR BUY detected\nBlock: ${ev.blockNumber}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+            "HBR BUY detected\nBlock: " + ev.blockNumber + "\nTx: https://bscscan.com/tx/" + ev.transactionHash,
             { parse_mode: "Markdown" }
           );
         } catch (err) {
-          console.warn("Telegram send failed:", err?.message || err);
+          console.warn("Telegram send failed: " + (err?.message || err));
         }
       }
     }
@@ -100,12 +101,13 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
 
   lastBlockBuy = current;
 } catch (err) {
-  console.log("Erro monitorando compras:", err.message || err);
+  console.log("Erro monitorando compras: " + (err.message || err));
 }
 ```
 
 }, INTERVAL_MS);
 
+// NFT mint alerts
 setInterval(async () => {
 try {
 const current = BigInt(await web3.eth.getBlockNumber());
@@ -127,18 +129,18 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
       try {
         await bot.sendMessage(
           chatId,
-          `NFT Minted\nToken ID: ${id}\nTo: ${to}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+          "NFT Minted\nToken ID: " + id + "\nTo: " + to + "\nTx: https://bscscan.com/tx/" + ev.transactionHash,
           { parse_mode: "Markdown" }
         );
       } catch (err) {
-        console.warn("Telegram send failed:", err?.message || err);
+        console.warn("Telegram send failed: " + (err?.message || err));
       }
     }
   }
 
   lastBlockMint = current;
 } catch (err) {
-  console.log("Erro monitorando mint de NFT:", err.message || err);
+  console.log("Erro monitorando mint de NFT: " + (err.message || err));
 }
 ```
 
