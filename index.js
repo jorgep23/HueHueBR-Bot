@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
-const { startAlerts } = require("./utils/alerts");
 const { startAlerts, getTotalMinted } = require("./utils/alerts");
 const { web3, nftContract, pairContract } = require("./utils/web3");
 const { getV3Price } = require("./utils/price");
