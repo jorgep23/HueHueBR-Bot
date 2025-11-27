@@ -66,26 +66,70 @@ Funções disponíveis:
 });
 
 // ===============================
-// COMMAND: /price
+//       COMMAND: /price  (substituir)
 // ===============================
 bot.onText(/\/price/, async (msg) => {
-    const chatId = msg.chat.id;
+  const chatId = msg.chat.id;
 
-    try {
-        const reserves = await pairContract.methods.getReserves().call();
-        const reserve0 = reserves._reserve0;
-        const reserve1 = reserves._reserve1;
-
-        const price = (reserve1 / reserve0).toFixed(12);
-
-        bot.sendMessage(
-            chatId,
-            `💰 *Preço HBR/WBNB:* ${price} BNB`,
-            { parse_mode: "Markdown" }
-        );
-    } catch (e) {
-        bot.sendMessage(chatId, "Erro ao buscar preço da pool.");
+  try {
+    // endereços
+    const HBR = (process.env.TOKEN_CONTRACT || "").toLowerCase();
+    const pairAddr = (process.env.PAIR_CONTRACT || "").toLowerCase();
+    if (!HBR || !pairAddr) {
+      return bot.sendMessage(chatId, "Erro: TOKEN_CONTRACT ou PAIR_CONTRACT não configurado.");
     }
+
+    // pega reserves e token0/token1
+    const [reserves, token0, token1] = await Promise.all([
+      pairContract.methods.getReserves().call(),
+      pairContract.methods.token0().call(),
+      pairContract.methods.token1().call()
+    ]);
+
+    // reserves vem como strings (uint112)
+    const reserve0 = reserves._reserve0;
+    const reserve1 = reserves._reserve1;
+
+    // converte para BN -> depois para float via fromWei (assumindo 18 decimais)
+    const reserve0Float = parseFloat(web3.utils.fromWei(reserve0.toString(), "ether"));
+    const reserve1Float = parseFloat(web3.utils.fromWei(reserve1.toString(), "ether"));
+
+    let reserveHBR, reserveWBNB;
+    // identifica qual reserve é HBR
+    if (token0.toLowerCase() === HBR) {
+      reserveHBR = reserve0Float;
+      reserveWBNB = reserve1Float;
+    } else if (token1.toLowerCase() === HBR) {
+      reserveHBR = reserve1Float;
+      reserveWBNB = reserve0Float;
+    } else {
+      // token HBR não está na pair informada
+      return bot.sendMessage(chatId, "Erro: token HBR não encontrado na pair configurada.");
+    }
+
+    // evita divisão por zero
+    if (reserveHBR === 0 || reserveWBNB === 0) {
+      return bot.sendMessage(chatId, "Erro: liquidez insuficiente na pool.");
+    }
+
+    // calcula preços
+    const bnbPerHbr = reserveWBNB / reserveHBR; // BNB por 1 HBR
+    const hbrPerBnb = reserveHBR / reserveWBNB; // HBR por 1 BNB
+
+    // formatação
+    const bnbPerHbrStr = bnbPerHbr.toFixed(12).replace(/\.?0+$/, "");
+    const hbrPerBnbStr = hbrPerBnb.toFixed(6).replace(/\.?0+$/, "");
+
+    await bot.sendMessage(
+      chatId,
+      `💰 *Preço HBR / WBNB*\n\n1 HBR ≈ *${bnbPerHbrStr}* BNB\n1 BNB ≈ *${hbrPerBnbStr}* HBR\n\nPair: \`${process.env.PAIR_CONTRACT}\``,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err) {
+    console.error("Erro no /price:", err && err.message ? err.message : err);
+    // envia mensagem amigável pro usuário
+    bot.sendMessage(chatId, "Erro ao buscar preço da pool. Verifique RPC, endereço da pair e logs do servidor.");
+  }
 });
 
 // ===============================
