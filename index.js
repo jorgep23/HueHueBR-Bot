@@ -1,29 +1,42 @@
+const express = require("express");
 const TelegramBot = require("node-telegram-bot-api");
 require("dotenv").config();
 
+const app = express();
+app.use(express.json());
+
+// Utils
 const { web3, tokenContract, nftContract, pairContract } = require("./utils/web3");
 const { startAlerts } = require("./utils/alerts");
 
-const TOKEN = process.env.BOT_TOKEN;
+// Detecta ambiente
+const isProd = process.env.NODE_ENV === "production";
+
+// BOT
+const bot = new TelegramBot(process.env.BOT_TOKEN, {
+    polling: !isProd
+});
+
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
 
-// =============================================
-// BOT: MODO RAILWAY → WEBHOOK (SEM POLLING)
-// =============================================
-let bot;
+// ===============================
+//      WEBHOOK (Railway)
+// ===============================
+if (isProd) {
+    const WEBHOOK_URL = `${process.env.WEBHOOK_URL}/webhook`;
 
-if (process.env.WEBHOOK_URL) {
-    bot = new TelegramBot(TOKEN, { webHook: true });
-    bot.setWebHook(`${process.env.WEBHOOK_URL}/bot${TOKEN}`);
-    console.log("Webhook configurado:", process.env.WEBHOOK_URL);
-} else {
-    bot = new TelegramBot(TOKEN, { polling: true });
-    console.log("Rodando em modo polling (local)...");
+    bot.setWebHook(WEBHOOK_URL);
+    console.log("🌐 Webhook registrado:", WEBHOOK_URL);
+
+    app.post("/webhook", (req, res) => {
+        bot.processUpdate(req.body);
+        res.sendStatus(200);
+    });
 }
 
-// =============================================
-// COMANDO /start
-// =============================================
+// ===============================
+//       COMMAND: /start
+// ===============================
 bot.onText(/\/start/, (msg) => {
     bot.sendMessage(
         msg.chat.id,
@@ -40,53 +53,44 @@ Funções disponíveis:
     );
 });
 
-// =============================================
-// COMANDO /price
-// =============================================
+// ===============================
+//       COMMAND: /price
+// ===============================
 bot.onText(/\/price/, async (msg) => {
     const chatId = msg.chat.id;
 
     try {
         const reserves = await pairContract.methods.getReserves().call();
-
-        const reserve0 = Number(reserves._reserve0);
-        const reserve1 = Number(reserves._reserve1);
-
-        if (reserve0 === 0 || reserve1 === 0) {
-            return bot.sendMessage(chatId, "Erro: pool sem liquidez suficiente.");
-        }
+        const reserve0 = reserves._reserve0;
+        const reserve1 = reserves._reserve1;
 
         const price = (reserve1 / reserve0).toFixed(12);
 
-        bot.sendMessage(chatId, `💰 *Preço HBR/WBNB:* ${price} BNB`, {
-            parse_mode: "Markdown",
-        });
+        bot.sendMessage(chatId, `💰 *Preço HBR/WBNB:* ${price} BNB`, { parse_mode: "Markdown" });
     } catch (e) {
-        console.log("Erro /price:", e.message);
         bot.sendMessage(chatId, "Erro ao buscar preço da pool.");
     }
 });
 
-// =============================================
-// COMANDO /tokeninfo
-// =============================================
-bot.onText(/\/tokeninfo/, async (msg) => {
+// ===============================
+//      COMMAND: /tokeninfo
+// ===============================
+bot.onText(/\/tokeninfo/, (msg) => {
     bot.sendMessage(
         msg.chat.id,
-        `📘 *Token HueHueBR (HBR)*
+        `📘 *Token HueHueBR (HBR)*  
 Contrato: \`${process.env.TOKEN_CONTRACT}\`
-Rede: BSC
-Supply: 100.000.000 HBR
-Par: HBR/WBNB
-
+Rede: BSC  
+Supply: 100.000.000 HBR  
+Par: HBR/WBNB  
 Use /price para ver o preço atual.`,
         { parse_mode: "Markdown" }
     );
 });
 
-// =============================================
-// COMANDO /nftinfo
-// =============================================
+// ===============================
+//      COMMAND: /nftinfo
+// ===============================
 bot.onText(/\/nftinfo/, async (msg) => {
     try {
         const total = await nftContract.methods.totalSupply().call();
@@ -101,41 +105,34 @@ Funções: boosts, staking, recompensas.
 Use /mint para mintar.`,
             { parse_mode: "Markdown" }
         );
-    } catch (e) {
-        console.log("Erro /nftinfo:", e.message);
+    } catch {
         bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT.");
     }
 });
 
-// =============================================
-// COMANDO /mint
-// =============================================
+// ===============================
+//       COMMAND: /mint
+// ===============================
 bot.onText(/\/mint/, async (msg) => {
     const chatId = msg.chat.id;
 
     try {
         const mintPrice = await nftContract.methods.price().call();
-        const mintBnB = web3.utils.fromWei(String(mintPrice), "ether");
+        const mintBnB = web3.utils.fromWei(mintPrice, "ether");
 
         bot.sendMessage(
             chatId,
-            `🖼 *Mint de NFT HueHueBR Founders*
-
-Preço: *${mintBnB} BNB* por NFT
-
-Envie agora para executar o mint:
-\`${process.env.NFT_CONTRACT}\``,
+            `🖼 *Mint de NFT HueHueBR Founders*\n\nPreço: *${mintBnB} BNB* por NFT\n\nEnvie agora para executar o mint:\n\n\`${process.env.NFT_CONTRACT}\``,
             { parse_mode: "Markdown" }
         );
-    } catch (e) {
-        console.log("Erro /mint:", e.message);
+    } catch {
         bot.sendMessage(chatId, "Erro ao buscar preço de mint.");
     }
 });
 
-// =============================================
-// COMANDO /buy
-// =============================================
+// ===============================
+//       COMMAND: /buy
+// ===============================
 bot.onText(/\/buy/, (msg) => {
     bot.sendMessage(
         msg.chat.id,
@@ -147,31 +144,44 @@ bot.onText(/\/buy/, (msg) => {
 3️⃣ Par: HBR/WBNB  
 4️⃣ Slippage recomendado: 1%–3%
 
-Link direto:
+Link direto:  
 https://pancakeswap.finance/swap?outputCurrency=${process.env.TOKEN_CONTRACT}`,
         { parse_mode: "Markdown" }
     );
 });
 
-// =============================================
-// COMANDO /help
-// =============================================
+// ===============================
+//       COMMAND: /help
+// ===============================
 bot.onText(/\/help/, (msg) => {
     bot.sendMessage(
         msg.chat.id,
         `ℹ️ *Ajuda do bot*
 
-/price – Ver preço HBR
-/tokeninfo – Info do token
-/nftinfo – Info dos NFTs
-/mint – Mint de NFT
-/buy – Como comprar`
+/price – Ver preço HBR  
+/tokeninfo – Info do token  
+/nftinfo – Info dos NFTs  
+/mint – Mint de NFT  
+/buy – Como comprar`,
+        { parse_mode: "Markdown" }
     );
 });
 
-// =============================================
-// ⚡ MONITORES AUTOMÁTICOS
-// =============================================
+// ===============================
+//      ALERTAS AUTOMÁTICOS
+// ===============================
 startAlerts(bot, OWNER_CHAT_ID);
+
+// ===============================
+//      SERVIDOR EXPRESS
+// ===============================
+app.get("/", (req, res) => {
+    res.send("HueHueBR Bot funcionando!");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor ativo na porta ${PORT}`);
+});
 
 console.log("🤖 HueHueBR Bot rodando...");
