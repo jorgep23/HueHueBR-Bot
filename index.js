@@ -99,34 +99,44 @@ Use /price para ver o preço atual.`,
 // ===============================
 // COMMAND: /nftinfo
 // ===============================
+async function getTotalMinted(nftContract, web3) {
+    let fromBlock = 0;
+    const latestBlock = await web3.eth.getBlockNumber();
+    const step = 1000; // blocos por chamada, ajuste conforme seu RPC
+    let totalMinted = 0;
+
+    while (fromBlock <= latestBlock) {
+        const toBlock = Math.min(fromBlock + step, latestBlock);
+        const events = await nftContract.getPastEvents("Transfer", {
+            filter: { from: "0x0000000000000000000000000000000000000000" },
+            fromBlock,
+            toBlock
+        });
+        totalMinted += events.length;
+        fromBlock = toBlock + 1;
+    }
+
+    return totalMinted;
+}
+
+// No comando /nftinfo
 bot.onText(/\/nftinfo/, async (msg) => {
     const chatId = msg.chat.id;
 
     try {
-        // pega eventos Transfer do contrato
-        const events = await nftContract.getPastEvents("Transfer", {
-            filter: { from: "0x0000000000000000000000000000000000000000" },
-            fromBlock: 0,
-            toBlock: "latest"
-        });
-
-        const totalMinted = events.length;
+        const totalMinted = await getTotalMinted(nftContract, web3);
 
         bot.sendMessage(
             chatId,
-            `🖼 *HueHueBR Founders NFT*
-Contrato: \`${process.env.NFT_CONTRACT}\`
-Supply mintado: ${totalMinted}/500
-Funções: boosts, staking, recompensas.
-
-Use /mint para mintar.`,
+            `🖼 *HueHueBR Founders NFT*\nContrato: \`${process.env.NFT_CONTRACT}\`\nSupply mintado: ${totalMinted}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
             { parse_mode: "Markdown" }
         );
     } catch (err) {
         console.error("Erro ao buscar informações do NFT:", err.message || err);
-        bot.sendMessage(chatId, "❌ Erro ao buscar informações do NFT. Verifique contrato e RPC.");
+        bot.sendMessage(chatId, "❌ Erro ao buscar informações do NFT. Verifique RPC e contrato.");
     }
 });
+
 
 
 
