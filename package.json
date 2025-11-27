@@ -1,11 +1,16 @@
 {
   "name": "huehuebr-bot",
   "version": "1.0.0",
-  "description": "Telegram bot oficial do projeto HueHueBR",
+  "description": "HueHueBR Telegram bot - price, alerts, mint helper",
   "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
-    "dotenv": "^16.0.0",
+    "dotenv": "^16.4.1",
     "node-telegram-bot-api": "^0.61.0",
-    "web3": "^4.0.3"
+    "web3": "^1.10.0",
+    "axios": "^1.4.0"
   }
 }
