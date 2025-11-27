@@ -99,46 +99,20 @@ Use /price para ver o preço atual.`,
 // ===============================
 // COMMAND: /nftinfo
 // ===============================
-async function getTotalMinted(nftContract, web3) {
-    let fromBlock = 0;
-    const latestBlock = await web3.eth.getBlockNumber();
-    const step = 1000; // blocos por chamada, ajuste conforme seu RPC
-    let totalMinted = 0;
 
-    while (fromBlock <= latestBlock) {
-        const toBlock = Math.min(fromBlock + step, latestBlock);
-        const events = await nftContract.getPastEvents("Transfer", {
-            filter: { from: "0x0000000000000000000000000000000000000000" },
-            fromBlock,
-            toBlock
-        });
-        totalMinted += events.length;
-        fromBlock = toBlock + 1;
-    }
-
-    return totalMinted;
+bot.onText(//nftinfo/, async (msg) => {
+try {
+const total = await getTotalMinted();
+bot.sendMessage(
+msg.chat.id,
+`🖼 *HueHueBR Founders NFT*\nSupply mintado: ${total}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
+{ parse_mode: "Markdown" }
+);
+} catch (err) {
+console.error("Erro ao buscar informações do NFT:", err.message || err);
+bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT. RPC pode estar sobrecarregado.");
 }
-
-// No comando /nftinfo
-bot.onText(/\/nftinfo/, async (msg) => {
-    const chatId = msg.chat.id;
-
-    try {
-        const totalMinted = await getTotalMinted(nftContract, web3);
-
-        bot.sendMessage(
-            chatId,
-            `🖼 *HueHueBR Founders NFT*\nContrato: \`${process.env.NFT_CONTRACT}\`\nSupply mintado: ${totalMinted}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
-            { parse_mode: "Markdown" }
-        );
-    } catch (err) {
-        console.error("Erro ao buscar informações do NFT:", err.message || err);
-        bot.sendMessage(chatId, "❌ Erro ao buscar informações do NFT. Verifique RPC e contrato.");
-    }
 });
-
-
-
 
 // ============================
 // COMMAND: /mint
