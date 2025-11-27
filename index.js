@@ -100,19 +100,20 @@ Use /price para ver o preço atual.`,
 // COMMAND: /nftinfo
 // ===============================
 
-bot.onText(//nftinfo/, async (msg) => {
-try {
-const total = await getTotalMinted();
-bot.sendMessage(
-msg.chat.id,
-`🖼 *HueHueBR Founders NFT*\nSupply mintado: ${total}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
-{ parse_mode: "Markdown" }
-);
-} catch (err) {
-console.error("Erro ao buscar informações do NFT:", err.message || err);
-bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT. RPC pode estar sobrecarregado.");
-}
+bot.onText(/\/nftinfo/, async (msg) => {
+  try {
+    const total = await getTotalMinted(); // await só funciona dentro de async
+    bot.sendMessage(
+      msg.chat.id,
+      `🖼 *HueHueBR Founders NFT*\nSupply mintado: ${total}/500\nFunções: boosts, staking, recompensas.\n\nUse /mint para mintar.`,
+      { parse_mode: "Markdown" }
+    );
+  } catch (err) {
+    console.error("Erro ao buscar informações do NFT:", err.message || err);
+    bot.sendMessage(msg.chat.id, "Erro ao buscar informações do NFT. RPC pode estar sobrecarregado.");
+  }
 });
+
 
 // ============================
 // COMMAND: /mint
