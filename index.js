@@ -103,18 +103,20 @@ bot.onText(/\/nftinfo/, async (msg) => {
     const chatId = msg.chat.id;
 
     try {
-        let total = "N/A";
+        // pega eventos Transfer do contrato
+        const events = await nftContract.getPastEvents("Transfer", {
+            filter: { from: "0x0000000000000000000000000000000000000000" },
+            fromBlock: 0,
+            toBlock: "latest"
+        });
 
-        // Tenta pegar totalSupply() se existir
-        if (nftContract.methods.totalSupply) {
-            total = await nftContract.methods.totalSupply().call();
-        }
+        const totalMinted = events.length;
 
         bot.sendMessage(
             chatId,
             `🖼 *HueHueBR Founders NFT*
 Contrato: \`${process.env.NFT_CONTRACT}\`
-Supply mintado: ${total}/500
+Supply mintado: ${totalMinted}/500
 Funções: boosts, staking, recompensas.
 
 Use /mint para mintar.`,
@@ -125,6 +127,7 @@ Use /mint para mintar.`,
         bot.sendMessage(chatId, "❌ Erro ao buscar informações do NFT. Verifique contrato e RPC.");
     }
 });
+
 
 
 // ============================
