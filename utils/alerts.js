@@ -4,16 +4,15 @@ let lastBlockBuy = 0n;
 let lastBlockMint = 0n;
 
 // Configurações
-const BLOCK_RANGE = 1n; // blocos por chamada para swaps/mints
-const STEP_BLOCKS = 1; // blocos por chamada de eventos NFT (reduzido para evitar "limit exceeded")
-const INTERVAL_MS = 20000; // 20s
-let nftCache = { totalMinted: 0, timestamp: 0, lastBlock: 0 }; // cache para NFT
+const BLOCK_RANGE = 1n;
+const STEP_BLOCKS = 1;
+const INTERVAL_MS = 20000;
+let nftCache = { totalMinted: 0, timestamp: 0, lastBlock: 0 };
 
 function safeBlock(bn) {
 return bn < 0n ? 0n : bn;
 }
 
-// Função segura para buscar eventos com retry em caso de "limit exceeded"
 async function safeGetPastEvents(contract, eventName, options) {
 let attempts = 0;
 while (attempts < 5) {
@@ -23,7 +22,7 @@ return await contract.getPastEvents(eventName, options);
 if (err.message.includes("limit exceeded")) {
 attempts++;
 console.log(`Limit exceeded, retry ${attempts}...`);
-await new Promise(r => setTimeout(r, 5000)); // espera maior entre retries
+await new Promise(r => setTimeout(r, 5000));
 } else {
 throw err;
 }
@@ -32,10 +31,9 @@ throw err;
 return [];
 }
 
-// Função para contar NFTs mintados com paginação automática
 async function getTotalMinted() {
 const now = Date.now();
-if (now - nftCache.timestamp < 60000) return nftCache.totalMinted; // 1 min cache
+if (now - nftCache.timestamp < 60000) return nftCache.totalMinted;
 
 const latestBlock = await web3.eth.getBlockNumber();
 let totalMinted = nftCache.totalMinted;
@@ -61,11 +59,9 @@ nftCache.timestamp = now;
 return totalMinted;
 }
 
-// Função principal de alerts
 async function startAlerts(bot, chatId) {
-console.log("📡 Alerts started");
+console.log("Alerts started");
 
-// Token buy alerts
 setInterval(async () => {
 try {
 const current = BigInt(await web3.eth.getBlockNumber());
@@ -92,11 +88,11 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
         try {
           await bot.sendMessage(
             chatId,
-            `💰 HBR BUY detected\nBlock: ${ev.blockNumber}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+            `HBR BUY detected\nBlock: ${ev.blockNumber}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
             { parse_mode: "Markdown" }
           );
         } catch (err) {
-          console.warn("Warning: telegram send failed:", err?.message || err);
+          console.warn("Telegram send failed:", err?.message || err);
         }
       }
     }
@@ -110,7 +106,6 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
 
 }, INTERVAL_MS);
 
-// NFT mint alerts
 setInterval(async () => {
 try {
 const current = BigInt(await web3.eth.getBlockNumber());
@@ -132,11 +127,11 @@ if (toBlock - fromBlock > BLOCK_RANGE) fromBlock = toBlock - BLOCK_RANGE;
       try {
         await bot.sendMessage(
           chatId,
-          `🎨 NFT Minted\nToken ID: ${id}\nTo: ${to}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
+          `NFT Minted\nToken ID: ${id}\nTo: ${to}\nTx: https://bscscan.com/tx/${ev.transactionHash}`,
           { parse_mode: "Markdown" }
         );
       } catch (err) {
-        console.warn("Warning: telegram send failed:", err?.message || err);
+        console.warn("Telegram send failed:", err?.message || err);
       }
     }
   }
