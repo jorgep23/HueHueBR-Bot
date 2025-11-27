@@ -146,8 +146,8 @@ bot.onText(/\/help/, (msg) => {
 // ===============================
 //  MONITORES AUTOMÁTICOS
 // ===============================
-monitorTokenBuys(bot, OWNER_CHAT_ID);
-monitorNFTMints(bot, OWNER_CHAT_ID);
+const { startAlerts } = require("./utils/alerts");
+startAlerts(bot, OWNER_CHAT_ID);
 
 console.log("🤖 HueHueBR Bot rodando...");
 
