@@ -42,7 +42,7 @@ bot.on("message", (msg) => {
 // ============================
 // ALERTS AUTOMÁTICOS (CORRETO)
 // ============================
-startAlerts(bot, CHAT_ID);
+startAlerts(bot, OWNER_CHAT_ID);
 
 console.log("📡 Alerts started");
 
