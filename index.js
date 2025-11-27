@@ -10,7 +10,7 @@ const app = express();
 // VARIÁVEIS DO .env
 // ============================
 const TOKEN = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;
+const CHAT_ID = process.env.OWNER_CHAT_ID;
 
 if (!TOKEN) {
     console.error("❌ BOT_TOKEN não configurado no .env");
