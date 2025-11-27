@@ -6,7 +6,7 @@ let lastBlockMint = 0n;
 
 // Configurações
 const BLOCK_RANGE = 1n; // blocos por chamada
-const INTERVAL_MS = 20000; // 20s
+const INTERVAL_MS = 60000; // 20s
 let nftCache = { totalMinted: 0, timestamp: 0 }; // cache para NFT
 
 function safeBlock(bn) {
