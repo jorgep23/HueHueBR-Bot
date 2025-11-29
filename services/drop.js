@@ -1,9 +1,8 @@
 const { ethers } = require("ethers");
 
-if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !process.ENV.TOKEN_CONTRACT) {
-  throw new Error("❌ Variáveis de ambiente RPC_URL, BOT_PRIVATE_KEY ou TOKEN_ADDRESS não definidas");
+if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !process.env.TOKEN_CONTRACT) {
+  throw new Error("❌ Variáveis de ambiente RPC_URL, BOT_PRIVATE_KEY ou TOKEN_CONTRACT não definidas");
 }
-const TOKEN_CONTRACT = process.env.TOKEN_CONTRACT;
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, provider);
