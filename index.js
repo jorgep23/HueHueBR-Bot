@@ -1,15 +1,17 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
-const { startWatchers } = require("./services/watchers");
-
-// Comandos
-require("./commands/tokenInfo");
-require("./commands/welcome");
-require("./commands/dropCommand");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
+// exporta para os comandos
+module.exports.bot = bot;
+
 console.log("🤖 Bot HueHueBR iniciado...");
 
-// Inicia watchers
+const { startWatchers } = require("./services/watchers");
 startWatchers(bot);
+
+// importa os comandos após criar o bot
+require("./commands/tokenInfo");
+require("./commands/welcome");
+require("./commands/dropCommand");
