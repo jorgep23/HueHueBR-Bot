@@ -1,38 +1,21 @@
 const { ethers } = require("ethers");
 
-// Verifica se todas as variáveis de ambiente estão definidas
-if (!process.env.RPC_URL) throw new Error("❌ RPC_URL não definido no .env");
-if (!process.env.BOT_PRIVATE_KEY) throw new Error("❌ BOT_PRIVATE_KEY não definido no .env");
-if (!process.env.TOKEN_CONTRACT) throw new Error("❌ TOKEN_CONTRACT não definido no .env");
+if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !process.env.TOKEN_ADDRESS) {
+  throw new Error("❌ Variáveis de ambiente RPC_URL, BOT_PRIVATE_KEY ou TOKEN_ADDRESS não definidas");
+}
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, provider);
-const TOKEN_CONTRACT = process.env.TOKEN_CONTRACT;
-
-const ERC20_ABI = [
+const tokenContract = new ethers.Contract(process.env.TOKEN_ADDRESS, [
   "function transfer(address to, uint256 amount) returns (bool)"
-];
+], wallet);
 
-const tokenContract = new ethers.Contract(TOKEN_CONTRACT, ERC20_ABI, wallet);
-
-/**
- * Envia HBR para um usuário (drop)
- * @param {string} to - endereço do usuário
- * @param {number|string} amount - quantidade de tokens
- */
 async function sendDrop(to, amount) {
-  if (!to || !ethers.isAddress(to)) {
-    return { success: false, error: "Endereço inválido" };
-  }
-  if (!amount || isNaN(amount) || Number(amount) <= 0) {
-    return { success: false, error: "Quantidade inválida" };
-  }
+  if (!ethers.isAddress(to)) return { success: false, error: "Endereço inválido" };
+  if (!amount || isNaN(amount) || Number(amount) <= 0) return { success: false, error: "Quantidade inválida" };
 
   try {
-    const tx = await tokenContract.transfer(
-      to,
-      ethers.parseUnits(amount.toString(), 18)
-    );
+    const tx = await tokenContract.transfer(to, ethers.parseUnits(amount.toString(), 18));
     await tx.wait();
     return { success: true, txHash: tx.hash };
   } catch (err) {
