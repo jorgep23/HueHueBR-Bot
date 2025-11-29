@@ -10,6 +10,7 @@ module.exports.bot = bot;
 
 // Importa os comandos depois de criar o bot
 require("./commands/welcome");
+require("./commands/register");
 require("./commands/tokenInfo");
 require("./commands/dropCommand");
 
