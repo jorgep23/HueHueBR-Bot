@@ -1,4 +1,4 @@
-const bot = require("node-telegram-bot-api").default;
+const { bot } = require("../index");
 const { sendDrop } = require("../services/drop");
 
 bot.onText(/\/drop (\d+) (\w+)/, async (msg, match) => {
