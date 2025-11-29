@@ -7,8 +7,6 @@ const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const poolAddress = ethers.getAddress("0xf69D28c20C4a28b00227f33be5108e2d8b66cf9f"); // retorna checksum
 const poolContract = new ethers.Contract(poolAddress, POOL_ABI, provider);
 
-const poolContract = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
-
 // Pegando preço do HBR em USD
 async function getPrice() {
   try {
