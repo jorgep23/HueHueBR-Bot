@@ -3,15 +3,13 @@ const TelegramBot = require("node-telegram-bot-api");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// exporta para os comandos
-module.exports.bot = bot;
-
 console.log("🤖 Bot HueHueBR iniciado...");
 
-const { startWatchers } = require("./services/watchers");
-startWatchers(bot);
+// Exporta a instância para os comandos
+module.exports.bot = bot;
 
-// importa os comandos após criar o bot
-require("./commands/tokenInfo");
+// Importa os comandos depois de criar o bot
 require("./commands/welcome");
+require("./commands/tokenInfo");
 require("./commands/dropCommand");
+
