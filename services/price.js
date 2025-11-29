@@ -1,32 +1,35 @@
 const { ethers } = require("ethers");
-const axios = require("axios");
 
+// Configurações
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
-// Pool HBR/WBNB (v3)
-const poolAddress = ethers.getAddress("0xf69D28c20C4a28b00227f33be5108e2d8b66cf9f"); // retorna checksum
-const poolContract = new ethers.Contract(poolAddress, POOL_ABI, provider);
+// Endereço da pool HBR/WBNB (você deve confirmar no GeckoTerminal)
+const POOL_ADDRESS_RAW = "0xf69d28c20c4a28b00227f33be5108e2d8b66cf9f";
+const POOL_ADDRESS = ethers.getAddress(POOL_ADDRESS_RAW); // Corrige checksum
 
-// Pegando preço do HBR em USD
+// ABI mínima para ler preço em PancakeSwap V3
+const POOL_ABI = [
+"function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)"
+];
+
+const poolContract = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
+
+// Converte sqrtPriceX96 para preço token0/token1
+function sqrtPriceX96ToPrice(sqrtPriceX96) {
+const num = BigInt(sqrtPriceX96) ** 2n;
+const denom = 2n ** 192n;
+return Number(num) / Number(denom);
+}
+
 async function getPrice() {
-  try {
-    const slot0 = await poolContract.slot0();
-    const sqrtPriceX96 = slot0.sqrtPriceX96;
-
-    // Preço HBR/WBNB
-    const priceHBR_WBNB = (Number(sqrtPriceX96.toString()) / 2 ** 96) ** 2;
-
-    // Pega preço do WBNB em USD via CoinGecko
-    const res = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=wbnb&vs_currencies=usd");
-    const priceWBNB = res.data.wbnb.usd;
-
-    const priceHBR_USD = priceHBR_WBNB * priceWBNB;
-
-    return priceHBR_USD;
-  } catch (err) {
-    console.error("getPrice ERROR:", err);
-    return 0;
-  }
+try {
+const slot0 = await poolContract.slot0();
+const price = sqrtPriceX96ToPrice(slot0.sqrtPriceX96);
+return price; // preço HBR/WBNB
+} catch (err) {
+console.error("getPrice ERROR:", err);
+return 0;
+}
 }
 
 module.exports = { getPrice };
