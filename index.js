@@ -1,6 +1,6 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
-const { startWatchers } = require("./utils/watchers");
+const { startWatchers } = require("./services/watchers");
 
 // Comandos
 require("./commands/tokenInfo");
