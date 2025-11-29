@@ -1,6 +1,6 @@
 const { ethers } = require("ethers");
 
-if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !PROCESS.ENV.TOKEN_CONTRACT) {
+if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !process.ENV.TOKEN_CONTRACT) {
   throw new Error("❌ Variáveis de ambiente RPC_URL, BOT_PRIVATE_KEY ou TOKEN_ADDRESS não definidas");
 }
 
