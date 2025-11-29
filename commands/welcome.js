@@ -1,4 +1,4 @@
-const bot = require("node-telegram-bot-api").default;
+const { bot } = require("../index");
 
 bot.on("new_chat_members", (msg) => {
   msg.new_chat_members.forEach(member => {
