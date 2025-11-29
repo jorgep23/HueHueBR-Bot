@@ -1,18 +1,26 @@
 const { bot } = require("../index");
 const { sendDrop } = require("../services/drop");
+const fs = require("fs");
+const path = require("path");
 
-bot.onText(/\/drop (\d+) (\w+)/, async (msg, match) => {
-  if (msg.from.id != process.env.ADMIN_ID) return;
+const dataPath = path.join(__dirname, "../data/users.json");
+
+bot.onText(/\/drop (.+)/, async (msg, match) => {
+  if (msg.from.id.toString() !== process.env.ADMIN_ID) return;
 
   const chatId = msg.chat.id;
   const amount = Number(match[1]);
-  const wallet = match[2];
+  const users = JSON.parse(fs.readFileSync(dataPath));
 
-  const result = await sendDrop(wallet, amount);
+  bot.sendMessage(chatId, "🎁 Iniciando DROP...");
 
-  if (result.success) {
-    bot.sendMessage(chatId, `🎉 Drop enviado!\n💳 Carteira: ${wallet}\n💰 Quantia: ${amount} HBR\n🔗 Tx: ${result.txHash}`);
-  } else {
-    bot.sendMessage(chatId, `⚠ Erro: ${result.error}`);
+  for (const [chat, wallet] of Object.entries(users)) {
+    const result = await sendDrop(wallet, amount);
+
+    if (result.success) {
+      bot.sendMessage(chatId, `🎉 DROP enviado para [link](tg://user?id=${chat})\n💳 Carteira: \`${wallet}\`\n💰 Quantia: ${amount} HBR\n🔗 Hash: \`${result.txHash}\``, { parse_mode: "Markdown" });
+    } else {
+      bot.sendMessage(chatId, `⚠ Erro ao enviar para ${wallet}: ${result.error}`);
+    }
   }
 });
