@@ -5,6 +5,6 @@ bot.onText(/\/start/, (msg) => {
 
   bot.sendMessage(
     chatId,
-    `👋 Olá, ${msg.from.first_name}!\nBem-vindo ao HueHueBR!\nUse /registrar e coloque seu endereço BNB(MetaMask/Trust Wallet) para participar dos drops.`
+    `👋 Olá, ${msg.from.first_name}!\nBem-vindo ao HueHueBR!\nUse /registrar SUA_CARTEIRA para participar dos drops.`
   );
 });
