@@ -1,11 +1,11 @@
 const { ethers } = require("ethers");
 
-if (!process.env.RPC_URL || !process.env.TOKEN_ADDRESS) {
+if (!process.env.RPC_URL || !process.env.TOKEN_CONTRACT) {
   throw new Error("❌ RPC_URL ou TOKEN_ADDRESS não definidos");
 }
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const tokenAddress = process.env.TOKEN_ADDRESS;
+const tokenAddress = process.env.TOKEN_CONTRACT;
 
 // ABI mínima ERC20
 const tokenContract = new ethers.Contract(tokenAddress, [
