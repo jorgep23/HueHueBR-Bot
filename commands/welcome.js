@@ -1,10 +1,10 @@
 const { bot } = require("../index");
 
-bot.on("new_chat_members", (msg) => {
-  msg.new_chat_members.forEach(member => {
-    bot.sendMessage(
-      msg.chat.id,
-      `👋 Bem-vindo, ${member.first_name}!\nUse /registrar SUA_CARTEIRA para participar dos drops!`
-    );
-  });
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    `👋 Olá, ${msg.from.first_name}!\nBem-vindo ao HueHueBR!\nUse /registrar SUA_CARTEIRA para participar dos drops.`
+  );
 });
