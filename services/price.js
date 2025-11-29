@@ -4,10 +4,8 @@ const axios = require("axios");
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
 // Pool HBR/WBNB (v3)
-const POOL_ADDRESS = "0xf69D28c20C4a28b00227f33be5108e2d8b66cf9f";
-const POOL_ABI = [
-  "function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16 observationIndex,uint16 observationCardinality,uint16 observationCardinalityNext,uint8 feeProtocol,bool unlocked)"
-];
+const poolAddress = ethers.getAddress("0xf69D28c20C4a28b00227f33be5108e2d8b66cf9f"); // retorna checksum
+const poolContract = new ethers.Contract(poolAddress, POOL_ABI, provider);
 
 const poolContract = new ethers.Contract(POOL_ADDRESS, POOL_ABI, provider);
 
