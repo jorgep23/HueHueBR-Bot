@@ -6,7 +6,7 @@ if (!process.env.RPC_URL || !process.env.BOT_PRIVATE_KEY || !process.ENV.TOKEN_C
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.BOT_PRIVATE_KEY, provider);
-const tokenContract = new ethers.Contract(PROCESS.ENV.TOKEN_CONTRACT, [
+const tokenContract = new ethers.Contract(process.ENV.TOKEN_CONTRACT, [
   "function transfer(address to, uint256 amount) returns (bool)"
 ], wallet);
 
