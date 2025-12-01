@@ -7,5 +7,5 @@ bot.onText(/\/price/, async (msg) => {
   let price = await getPrice();
   price = Number(price) || 0;
 
-  bot.sendMessage(chatId, `💰 Preço HBR: $${price.toFixed(8)} USD`);
+  bot.sendMessage(chatId, `💰 Preço HBR: $${price.toFixed(8)} BNB`);
 });
