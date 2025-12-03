@@ -1,0 +1,41 @@
+require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+const path = require('path');
+const { startDropper } = require('./services/dropper');
+const { botRegisterHandlers } = require('./commands/registrar');
+const { botAdminHandlers } = require('./commands/admin');
+const { botUserHandlers } = require('./commands/user');
+const storage = require('./services/storage');
+
+const BOT_TOKEN = process.env.BOT_TOKEN_DROP;
+if (!BOT_TOKEN) {
+  console.error('Missing BOT_TOKEN_DROP in env. Exiting.');
+  process.exit(1);
+}
+const ADMIN_ID = process.env.ADMIN_ID;
+const GROUP_ID = process.env.GROUP_ID || null;
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+bot.on('polling_error', (err) => console.error('polling_error', err));
+
+// expose bot to command modules
+module.exports.bot = bot;
+
+// ensure DB exists
+storage.ensure();
+
+// register handlers
+botRegisterHandlers(bot);
+botAdminHandlers(bot);
+botUserHandlers(bot);
+
+// start dropper service
+startDropper(bot).catch(e => console.error('dropper error', e));
+
+// simple http server for health & railway
+const app = express();
+app.get('/', (req,res) => res.json({ ok:true }));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=>console.log('HTTP server listening on', PORT));
+console.log('🤖 HueHueBR Drop Bot started.');

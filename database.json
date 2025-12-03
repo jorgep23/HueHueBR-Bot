@@ -1,0 +1,11 @@
+{
+  "users": {},
+  "withdrawals": [],
+  "config": {
+    "priceUsd": 9.628e-05,
+    "intervalMin": 20,
+    "minHbr": 20,
+    "maxHbr": 80,
+    "maxDailyPerUser": 3000
+  }
+}
