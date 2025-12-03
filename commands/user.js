@@ -1,4 +1,4 @@
-const storage = require('./storage');
+const storage = require('./services/storage');
 
 const { v4: uuidv4 } = require('uuid');
 
