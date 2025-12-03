@@ -1,63 +1,87 @@
-const storage = require('../services/storage');
+const storage = require('./storage');
+
 const { v4: uuidv4 } = require('uuid');
 
-function botUserHandlers(bot) {
-  // Preço
-  bot.onText(/\/price/, (msg) => {
-    const db = storage.read();
-    const p = db.config.priceUsd;
-    bot.sendMessage(msg.chat.id, `💰 Preço HBR (manual): $${p}`);
-  });
 
-  // Meus pontos
-  bot.onText(/\/mypoints/, (msg) => {
-    const u = storage.getUser(msg.from.id);
-    if (!u) return bot.sendMessage(msg.chat.id, '❌ Você não está registrado. Use /registrar 0xSuaCarteira (no privado).');
-    const today = u.totalToday || 0;
-    const all = u.totalAllTime || 0;
-    bot.sendMessage(msg.chat.id, `📊 Seus ganhos\nHoje: ${today} HBR\nTotal: ${all} HBR`);
-  });
+function botUserHandlers(bot){
 
-  // Solicitação de saque
-  bot.onText(/\/withdraw\s+(\d+)/, (msg, match) => {
-    const amount = Number(match[1]);
-    if (!amount || amount <= 0) return bot.sendMessage(msg.chat.id, 'Use: /withdraw 1000 (quantia em HBR)');
 
-    const u = storage.getUser(msg.from.id);
-    if (!u || !u.wallet) return bot.sendMessage(msg.chat.id, '❌ Você precisa registrar sua carteira antes de solicitar saque.');
+// /price
 
-    // Verifica saldo disponível
-    const balance = u.totalAllTime - (u.totalWithdrawn || 0);
-    if (balance < amount) {
-      return bot.sendMessage(msg.chat.id, `❌ Saldo insuficiente. Seu saldo disponível é ${balance} HBR.`);
-    }
+bot.onText(/\/price/, (msg) => {
 
-    // Cria solicitação
-    const id = uuidv4();
-    const req = {
-      id,
-      telegramId: msg.from.id,
-      username: msg.from.username || msg.from.first_name,
-      amount,
-      wallet: u.wallet,
-      createdAt: new Date(),
-    };
-    storage.addWithdrawal(req);
+const db = storage.read();
 
-    bot.sendMessage(msg.chat.id, `✅ Solicitação criada. ID: ${id}. Um admin irá revisar.`);
+bot.sendMessage(msg.chat.id, `💰 Preço HBR (manual): $${db.config.priceUsd}`);
 
-    // Notificar admin
-    const ADMIN_ID = process.env.ADMIN_ID;
-    if (ADMIN_ID) {
-      bot.sendMessage(
-        ADMIN_ID,
-        `📥 *Novo saque*\n\n👤 Usuário: @${req.username}\n🪪 ID: ${req.telegramId}\n💰 Valor: ${amount} HBR\n💼 Wallet: ${req.wallet}\n🆔 Solicitação: ${id}`,
-        { parse_mode: "Markdown" }
-      ).catch(() => {
-        console.log("❌ Não foi possível enviar notificação ao admin. Ele precisa iniciar conversa com o bot no privado.");
-      });
-    }
-  });
+});
+
+
+// /mypoints
+
+bot.onText(/\/mypoints/, (msg) => {
+
+const u = storage.getUser(msg.from.id);
+
+if (!u) return bot.sendMessage(msg.chat.id, '❌ Você não está registrado. Use /registrar 0xSuaCarteira');
+
+const today = u.totalToday || 0;
+
+const all = u.totalAllTime || 0;
+
+bot.sendMessage(msg.chat.id, `📊 Seus ganhos\nHoje: ${today} HBR\nTotal: ${all} HBR`);
+
+});
+
+
+// /registrar 0x...
+
+bot.onText(/\/registrar\s+([0-9a-fA-Fx]+)/, (msg, match) => {
+
+const wallet = match[1];
+
+storage.setUser(msg.from.id, { wallet, username: msg.from.username || msg.from.first_name });
+
+bot.sendMessage(msg.chat.id, `✅ Carteira registrada: ${wallet}`);
+
+});
+
+
+// /withdraw
+
+bot.onText(/\/withdraw\s+(\d+)/, (msg, match) => {
+
+const amount = Number(match[1]);
+
+if (!amount || amount <= 0) return bot.sendMessage(msg.chat.id, 'Use: /withdraw 1000 (quantia em HBR)');
+
+const u = storage.getUser(msg.from.id);
+
+if (!u || !u.wallet) return bot.sendMessage(msg.chat.id, '❌ Você precisa registrar sua carteira antes de solicitar saque.');
+
+const balance = u.totalAllTime || 0;
+
+if (amount > balance) return bot.sendMessage(msg.chat.id, `❌ Saldo insuficiente. Você tem ${balance} HBR.`);
+
+
+const id = uuidv4();
+
+const req = { id, telegramId: msg.from.id, username: msg.from.username || msg.from.first_name, amount, wallet: u.wallet, createdAt: new Date() };
+
+storage.addWithdrawal(req);
+
+
+bot.sendMessage(msg.chat.id, `✅ Solicitação criada. ID: ${id}. Um admin irá revisar.`);
+
+
+const ADMIN_ID = process.env.ADMIN_ID;
+
+if (ADMIN_ID) bot.sendMessage(ADMIN_ID, `📥 Novo saque\nID: ${id}\nUser: @${req.username}\nAmount: ${amount} HBR\nWallet: ${req.wallet}`);
+
+});
+
 }
 
+
 module.exports = { botUserHandlers };
+
