@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const { botUserHandlers } = require('./commands/user');
+const { botUserHandlers } = require('.commands/user.js');
 
 
 const token = process.env.BOT_TOKEN;
