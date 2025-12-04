@@ -28,7 +28,7 @@ function botUserHandlers(bot){
     }
     const checksum = wallet;
     const user = storage.setUser(msg.from.id, { wallet: checksum, username: msg.from.username || msg.from.first_name, registeredAt: new Date() });
-    bot.sendMessage(chatId, '✅ Registrado! Sua carteira foi salva. Você passará a concorrer nos drops automáticos.');
+    // bot.sendMessage(chatId, '✅ Registrado! Sua carteira foi salva. Você passará a concorrer nos drops automáticos.');
     // detect duplicate wallets
     const dup = storage.findUsersByWallet(wallet);
     if (dup.length > 1) {
