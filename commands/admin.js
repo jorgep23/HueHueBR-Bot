@@ -41,15 +41,37 @@ function botAdminHandlers(bot){
     bot.sendMessage(msg.chat.id, 'Pending:\n' + lines.join('\n'));
   });
 
-  // approve withdrawal (admin) - removes and notifies admin to send tokens manually
+  // approve withdrawal (admin) - marks as paid and notifies user & group
   bot.onText(/\/approve\s+([0-9a-fA-F-]+)/, (msg, match) => {
     if (!isAdmin(msg)) return;
     const id = match[1];
-    const req = storage.popWithdrawal(id);
+    const req = storage.completeWithdrawal(id, msg.from.id);
     if (!req) return bot.sendMessage(msg.chat.id, 'ID não encontrado.');
-    bot.sendMessage(msg.chat.id, `✅ Solicitação aprovada. Envie manualmente ${req.amount} HBR para ${req.wallet} e confirme.`);
+    bot.sendMessage(msg.chat.id, `✅ Solicitação aprovada e marcada como PAGA. ID: ${id}`);
     // notify user
-    bot.sendMessage(req.telegramId, `✅ Seu saque de ${req.amount} HBR foi aprovado. Aguarde o envio.`);
+    bot.sendMessage(req.telegramId, `✅ Seu saque de ${req.amount} HBR foi aprovado e marcado como pago. Obrigado!`);
+    // notify group publicly
+    const GROUP_ID = process.env.GROUP_ID;
+    if (GROUP_ID) bot.sendMessage(GROUP_ID, `✅ Saque pago! Usuário: @${req.username}\nQuantia: ${req.amount} HBR\nCarteira: \`${req.wallet}\``,{parse_mode:'Markdown'});
+  });
+
+  // reject withdrawal
+  bot.onText(/\/reject\s+([0-9a-fA-F-]+)\s*(.*)/, (msg, match) => {
+    if (!isAdmin(msg)) return;
+    const id = match[1];
+    const reason = match[2] || 'sem motivo informado';
+    const req = storage.rejectWithdrawal(id, msg.from.id, reason);
+    if (!req) return bot.sendMessage(msg.chat.id, 'ID não encontrado.');
+    bot.sendMessage(req.telegramId, `❌ Seu saque de ${req.amount} HBR foi rejeitado. Motivo: ${reason}`);
+    bot.sendMessage(msg.chat.id, `✅ Solicitação rejeitada. ID: ${id}`);
+  });
+
+  // list admin logs
+  bot.onText(/\/adminlogs/, (msg) => {
+    if (!isAdmin(msg)) return;
+    const db = storage.read();
+    const lines = (db.logsAdmin || []).slice(0,50).map(l=>`${l.ts} ${l.type} ${l.id||''} ${l.telegramId||''}`);
+    bot.sendMessage(msg.chat.id, 'Admin logs:\n' + lines.join('\n'));
   });
 }
 
