@@ -12,6 +12,18 @@ const BOT_TOKEN = process.env.BOT_TOKEN_DROP;
 if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN_DROP in env. Exiting.');
   process.exit(1);
+
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const SERVER_URL = process.env.SERVER_URL;
+
+if (!TOKEN) {
+  console.error("❌ ERROR: TELEGRAM_BOT_TOKEN is missing!");
+  process.exit(1);
+}
+if (!SERVER_URL) {
+  console.error("❌ ERROR: SERVER_URL is missing!");
+  process.exit(1);
+}
 }
 const ADMIN_ID = process.env.ADMIN_ID;
 const GROUP_ID = process.env.GROUP_ID || null;
