@@ -16,8 +16,8 @@ if (!BOT_TOKEN) {
 const ADMIN_ID = process.env.ADMIN_ID;
 const GROUP_ID = process.env.GROUP_ID || null;
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-bot.on('polling_error', (err) => console.error('polling_error', err));
+const bot = new TelegramBot(TOKEN, { webHook: { } });
+bot.setWebHook(`${process.env.SERVER_URL}/webhook/${TOKEN}`);
 
 // expose bot to command modules
 module.exports.bot = bot;
