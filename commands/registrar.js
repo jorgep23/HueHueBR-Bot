@@ -28,7 +28,7 @@ function botRegisterHandlers(bot){
     // notify group if GROUP_ID
     const GROUP_ID = process.env.GROUP_ID;
     if (GROUP_ID){
-      bot.sendMessage(GROUP_ID, `📥 @${msg.from.username || msg.from.first_name} registrou a carteira e entrou nos drops!`);
+      bot.sendMessage(GROUP_ID, `📥 @${msg.from.username || msg.from.first_name} registrou a carteira e está participando dos drops!`);
     }
   });
 
