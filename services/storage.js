@@ -11,9 +11,9 @@ function defaultDb() {
     config: {
       priceUsd: Number(process.env.HBR_PRICE_USD || 0.00009628),
       intervalMin: Number(process.env.DROP_INTERVAL_MIN || 20),
-      minHbr: Number(process.env.DROP_MIN_HBR || 20),
-      maxHbr: Number(process.env.DROP_MAX_HBR || 80),
-      maxDailyPerUser: Number(process.env.MAX_DAILY_HBR_PER_USER || 3000),
+      minHbr: Number(process.env.DROP_MIN_HBR || 5),
+      maxHbr: Number(process.env.DROP_MAX_HBR || 20),
+      maxDailyPerUser: Number(process.env.MAX_DAILY_HBR_PER_USER || 100),
       fraudMaxWithdrawalsPerHour: 3,
       autoBlockOnSuspicion: true
     }
