@@ -4,7 +4,7 @@ const crypto = require('crypto');
 // select a random eligible user
 async function pickRecipient(){
   const db = storage.read();
-  const users = Object.entries(db.users).filter(([id,u]) => u && u.wallet && !u.blocked);
+  const users = Object.entries(db.users).filter(([id,u]) => u && u.wallet);
   if (!users.length) return null;
   // filter by daily limit
   const cfg = db.config;
@@ -35,20 +35,6 @@ async function performDrop(bot){
     const newTotalToday = (user.totalToday || 0) + amount;
     const newAll = (user.totalAllTime || 0) + amount;
     storage.setUser(recipient.telegramId, { wallet: user.wallet, username: user.username, totalToday: newTotalToday, totalAllTime: newAll, lastDropDay: today });
-    // add public log
-    storage.addPublicLog({ text: `🎉 DROP - @${user.username || recipient.telegramId} recebeu ${amount} HBR (~$${(amount * cfg.priceUsd).toFixed(6)})` });
-    storage.addAdminLog({ type:'drop', telegramId: recipient.telegramId, username: user.username, amount, ts: new Date().toISOString() });
-    // anti-fraud: if user receives unusually many drops in short period, increment suspicion
-    const attempts = storage.recordAttempt(recipient.telegramId, 'drop_received');
-    const recent = storage.countRecentAttempts(recipient.telegramId, 60*60*1000); // last hour
-    if (recent > 20) { // arbitrary threshold
-      storage.incrementSuspicion(recipient.telegramId);
-      if (storage.read().config.autoBlockOnSuspicion) {
-        storage.blockUser(recipient.telegramId, 'too_many_drops');
-        const ADMIN_ID = process.env.ADMIN_ID;
-        if (ADMIN_ID) bot.sendMessage(ADMIN_ID, `⚠️ Usuário @${user.username} bloqueado por muitas drops em curto período.`);
-      }
-    }
     // announce in group
     const GROUP_ID = process.env.GROUP_ID;
     const msg = `🎉 DROP ALEATÓRIO\n\nO membro @${user.username || recipient.telegramId} recebeu *${amount} HBR* (~$${(amount * cfg.priceUsd).toFixed(6)})\nCarteira: \`${user.wallet}\``;
