@@ -7,7 +7,7 @@
     "priceUsd": 9.628e-05,
     "intervalMin": 20,
     "minHbr": 5,
-    "maxHbr": 2,
+    "maxHbr": 20,
     "maxDailyPerUser": 100,
     "fraudMaxWithdrawalsPerHour": 3,
     "autoBlockOnSuspicion": true
