@@ -6,7 +6,7 @@ function botUserHandlers(bot){
   bot.onText(/\/price/, (msg) => {
     const db = storage.read();
     const p = db.config.priceUsd;
-    bot.sendMessage(msg.chat.id, `💰 Preço HBR (manual): $${p}`);
+    bot.sendMessage(msg.chat.id, `💰 Preço HBR: $${p}`);
   });
 
   // mypoints
