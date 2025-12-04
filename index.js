@@ -23,7 +23,7 @@ if (!SERVER_URL) {
 const ADMIN_ID = process.env.ADMIN_ID;
 const GROUP_ID = process.env.GROUP_ID || null;
 
-const bot = new TelegramBot(TOKEN, { webHook: { } });
+const bot = new TelegramBot(BOT_TOKEN, { webHook: { } });
 bot.setWebHook(`${process.env.SERVER_URL}/webhook/${BOT_TOKEN}`);
 
 // expose bot to command modules
