@@ -1,7 +1,8 @@
-require('dotenv').config();
+require('dotenv').config(); 
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const path = require('path');
+
 const { startDropper } = require('./services/dropper');
 const { botRegisterHandlers } = require('./commands/registrar');
 const { botAdminHandlers } = require('./commands/admin');
@@ -29,13 +30,14 @@ const GROUP_ID = process.env.GROUP_ID || null;
 // =====================================
 // TELEGRAM BOT VIA WEBHOOK
 // =====================================
-const bot = new TelegramBot(BOT_TOKEN, { webHook: true });
+const bot = new TelegramBot(BOT_TOKEN, { webHook: {} });
 
 // webhook URL: SERVER_URL/webhook/<TOKEN>
 const webhookUrl = `${SERVER_URL}/webhook/${BOT_TOKEN}`;
-bot.setWebHook(webhookUrl);
 
-console.log("📡 Webhook set to:", webhookUrl);
+bot.setWebHook(webhookUrl)
+  .then(() => console.log("📡 Webhook configured:", webhookUrl))
+  .catch(err => console.error("❌ Failed to set Webhook:", err));
 
 // expose bot to modules
 module.exports.bot = bot;
@@ -63,14 +65,23 @@ startDropper(bot).catch(e => console.error("dropper error", e));
 const app = express();
 app.use(express.json());
 
-// Telegram WebHook endpoint
+// Telegram Webhook endpoint
 app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
+  try {
+    bot.processUpdate(req.body);
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error("❌ Error inside webhook handler:", err);
+    return res.sendStatus(500);
+  }
 });
 
 // Health-check (Railway)
-app.get('/', (req, res) => res.json({ ok: true, bot: "HueHueBR Airdrop Bot" }));
+app.get('/', (req, res) => res.json({
+  ok: true,
+  bot: "HueHueBR Airdrop Bot",
+  webhook: webhookUrl
+}));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
