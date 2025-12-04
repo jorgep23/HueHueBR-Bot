@@ -13,13 +13,8 @@ if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN_DROP in env. Exiting.');
   process.exit(1);
 
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const SERVER_URL = process.env.SERVER_URL;
 
-if (!TOKEN) {
-  console.error("❌ ERROR: TELEGRAM_BOT_TOKEN is missing!");
-  process.exit(1);
-}
+const SERVER_URL = process.env.SERVER_URL;
 if (!SERVER_URL) {
   console.error("❌ ERROR: SERVER_URL is missing!");
   process.exit(1);
@@ -29,7 +24,7 @@ const ADMIN_ID = process.env.ADMIN_ID;
 const GROUP_ID = process.env.GROUP_ID || null;
 
 const bot = new TelegramBot(TOKEN, { webHook: { } });
-bot.setWebHook(`${process.env.SERVER_URL}/webhook/${TOKEN}`);
+bot.setWebHook(`${process.env.SERVER_URL}/webhook/${BOT_TOKEN}`);
 
 // expose bot to command modules
 module.exports.bot = bot;
