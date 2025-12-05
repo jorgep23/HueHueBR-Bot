@@ -34,11 +34,30 @@ async function performDrop(bot) {
   dropRunning = true;
 
   try {
-    const price = await getHbrPriceUsd();
+    // ===========================
+    // PREÇO SEGURO
+    // ===========================
+    let price = await getHbrPriceUsd();
+
+    if (!price || isNaN(price) || price <= 0) {
+      console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
+      // fallback para não quebrar os drops
+      price = 0.00001;
+    }
+
     const cfg = await storage.getConfig();
 
-    const usdReward = Number((Math.random() * 0.03 + 0.01).toFixed(4)); // $0.01 → $0.04
+    // USD aleatório: 0.01 → 0.04
+    const usdReward = Number((Math.random() * 0.03 + 0.01).toFixed(4));
+
+    // Recompensa HBR segura
     const hbrAmount = Number((usdReward / price).toFixed(2));
+
+    if (!isFinite(hbrAmount) || isNaN(hbrAmount)) {
+      console.error("❌ Erro crítico: cálculo de HBR resultou inválido:", hbrAmount);
+      dropRunning = false;
+      return;
+    }
 
     const allUsers = await storage.read();
     const usersList = Object.values(allUsers.users).filter(u => u.wallet && !u.blocked);
