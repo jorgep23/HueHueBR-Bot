@@ -12,7 +12,7 @@ const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
 let dropRunning = false;
 
 // -------------------------------------------------------
-// LAST DROP (PostgreSQL)
+// LAST DROP STATE
 // -------------------------------------------------------
 
 async function getLastDropTimestamp() {
@@ -34,70 +34,53 @@ async function performDrop(bot) {
   dropRunning = true;
 
   try {
-    // =============================
-    // PREÇO SEGURO
-    // =============================
+    console.log("🔍 Obtendo preço do HBR...");
+
     let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
 
     if (!price || isNaN(price) || price <= 0) {
-      console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
-      price = 0.00001; // fallback
+      console.error("❌ Preço inválido retornado, usando fallback");
+      price = 0.00001;
     }
 
-    // =============================
-    // LOGS IMPORTANTES
-    // =============================
-    console.log("DROP_MIN_USD:", process.env.DROP_MIN_USD);
-    console.log("DROP_MAX_USD:", process.env.DROP_MAX_USD);
-    console.log("HBR PRICE:", price);
+    console.log("💲 Preço real do HBR:", price);
 
-    // =============================
-    // CONFIG DO USDRANGE
-    // =============================
+    // valores aleatórios configuráveis
     const MIN = Number(process.env.DROP_MIN_USD || 0.01);
     const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
-    const usdReward = Number(
-      (Math.random() * (MAX - MIN) + MIN).toFixed(4)
-    );
+    const usdReward = Number((Math.random() * (MAX - MIN) + MIN).toFixed(4));
 
-    console.log("usdValue escolhido:", usdReward);
+    console.log("🎁 USD sorteado:", usdReward);
 
-    // =============================
-    // CÁLCULO DO HBR
-    // =============================
     const hbrAmount = Number((usdReward / price).toFixed(2));
 
-    console.log("Reward HBR calculado:", hbrAmount);
-
     if (!isFinite(hbrAmount) || isNaN(hbrAmount)) {
-      console.error("❌ Erro crítico: cálculo de HBR resultou inválido:", hbrAmount);
+      console.error("❌ Erro crítico: HBR calculado inválido");
       dropRunning = false;
       return;
     }
 
-    // =============================
-    // SELECIONA USUÁRIO
-    // =============================
+    console.log("📦 HBR calculado:", hbrAmount);
+
     const allUsers = await storage.read();
-    const usersList = Object.values(allUsers.users).filter(
-      u => u.wallet && !u.blocked
-    );
+    const usersList = Object.values(allUsers.users).filter(u => u.wallet && !u.blocked);
 
     if (usersList.length === 0) {
+      console.log("⚠ Nenhum usuário elegível para receber drops.");
       dropRunning = false;
       return;
     }
 
     const randomUser = usersList[Math.floor(Math.random() * usersList.length)];
 
-    await storage.setUser(randomUser.telegramId, {
-      balance: (randomUser.balance || 0) + hbrAmount
-    });
+    // Atualiza saldo
+    const newBalance = (randomUser.balance || 0) + hbrAmount;
 
-    // =============================
-    // ENVIA MENSAGEM NO GRUPO
-    // =============================
+    await storage.setUser(randomUser.telegramId, { balance: newBalance });
+
+    console.log(`✅ DROP entregue para @${randomUser.username}: +${hbrAmount} HBR`);
+
     const GROUP_ID = process.env.GROUP_ID;
 
     if (GROUP_ID) {
@@ -136,12 +119,11 @@ async function startDropper(bot) {
     const diff = now - lastTs;
 
     if (diff >= DROP_INTERVAL) {
-      console.log("Drop atrasado → executando agora...");
+      console.log("⚠ Drop atrasado → executando agora...");
       performDrop(bot);
-      nextDropIn = DROP_INTERVAL;
     } else {
       nextDropIn = DROP_INTERVAL - diff;
-      console.log(`Próximo drop em ${(nextDropIn / 1000 / 60).toFixed(1)} min`);
+      console.log(`⏳ Próximo drop em ${(nextDropIn / 1000 / 60).toFixed(1)} min`);
     }
   }
 
