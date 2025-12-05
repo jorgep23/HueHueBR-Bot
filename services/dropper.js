@@ -28,6 +28,10 @@ async function updateLastDropTimestamp(ts) {
 // -------------------------------------------------------
 // DROP FUNCTION
 // -------------------------------------------------------
+console.log("DROP_MIN_USD:", process.env.DROP_MIN_USD);
+console.log("DROP_MAX_USD:", process.env.DROP_MAX_USD);
+console.log("HBR PRICE:", price);
+console.log("usdValue escolhido:", usdValue);
 
 async function performDrop(bot) {
   if (dropRunning) return;
