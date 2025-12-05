@@ -1,6 +1,6 @@
 // services/dropper.js
 
-const storage = require('./storage');
+const storage = require('../services/storage');
 const { getHbrPriceUsd } = require('./pancakeswap');
 const db = require('./db'); // seu módulo PostgreSQL
 
