@@ -1,54 +1,51 @@
-// services/pancakeswap.js
-const { JsonRpcProvider, Contract } = require('ethers');
+const { ethers } = require("ethers");
 
-const PCS_ROUTER = process.env.PCS_ROUTER || "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-const BUSD = process.env.BUSD_ADDRESS || "0xe9e7cea3dedca5984780bafc599bd69add087d56";
-const WBNB = process.env.WBNB_ADDRESS || "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
-const RPC = process.env.BSC_RPC || "https://bsc-dataseed.binance.org/";
+const provider = new ethers.JsonRpcProvider(process.env.BSC_RPC);
 
-const provider = new JsonRpcProvider(RPC);
+const PAIR_ADDRESS = "0xccc3e095bebbef74d140e3a9330f980873263d17";
+const WBNB_ADDRESS = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c";
 
-// getAmountsOut ABI
-const ABI = [
-  "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory)"
+const pairAbi = [
+  "function getReserves() external view returns (uint112,uint112,uint32)",
+  "function token0() external view returns (address)",
+  "function token1() external view returns (address)"
 ];
-
-let cache = { price: null, ts: 0 };
 
 async function getHbrPriceUsd(hbrAddress) {
   try {
-    if (!hbrAddress) {
-      console.warn("⚠ getHbrPriceUsd: HBR_CONTRACT não definido!");
-      return null;
+    const pair = new ethers.Contract(PAIR_ADDRESS, pairAbi, provider);
+
+    const token0 = await pair.token0();
+    const token1 = await pair.token1();
+
+    const [r0, r1] = await pair.getReserves();
+
+    let reserveHBR, reserveWBNB;
+
+    if (token0.toLowerCase() === hbrAddress.toLowerCase()) {
+      reserveHBR = Number(r0);
+      reserveWBNB = Number(r1);
+    } else {
+      reserveHBR = Number(r1);
+      reserveWBNB = Number(r0);
     }
 
-    const now = Date.now();
-    if (cache.price && now - cache.ts < 60_000) return cache.price;
+    // preço HBR em BNB
+    const priceInBNB = reserveWBNB / reserveHBR;
 
-    const router = new Contract(PCS_ROUTER, ABI, provider);
+    // buscar preço do BNB em USD (coingecko free)
+    const bnbData = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT")
+      .then(r => r.json())
+      .catch(() => ({ price: 600 }));
 
-    // 1 HBR com 18 decimais
-    const amountIn = BigInt(10) ** BigInt(18);
+    const bnbUsd = Number(bnbData.price || 600);
 
-    // ROTA CORRETA: HBR → WBNB → BUSD
-    const path = [hbrAddress, WBNB, BUSD];
+    const priceUsd = priceInBNB * bnbUsd;
 
-    const amounts = await router.getAmountsOut(amountIn, path);
-
-    if (!amounts || !amounts[amounts.length - 1]) {
-      console.warn("⚠ getAmountsOut retornou vazio");
-      return null;
-    }
-
-    // Valor final (BUSD)
-    const busd = Number(amounts[amounts.length - 1]) / 1e18;
-
-    cache = { price: busd, ts: now };
-
-    return busd;
-  } catch (e) {
-    console.error("❌ Erro getHbrPriceUsd:", e.message);
-    return null;
+    return priceUsd;
+  } catch (err) {
+    console.error("❌ Erro ao calcular preço HBR:", err);
+    return 0.00001;
   }
 }
 
