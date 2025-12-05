@@ -28,36 +28,47 @@ async function updateLastDropTimestamp(ts) {
 // -------------------------------------------------------
 // DROP FUNCTION
 // -------------------------------------------------------
-console.log("DROP_MIN_USD:", process.env.DROP_MIN_USD);
-console.log("DROP_MAX_USD:", process.env.DROP_MAX_USD);
-console.log("HBR PRICE:", price);
-console.log("usdValue escolhido:", usdValue);
 
 async function performDrop(bot) {
   if (dropRunning) return;
   dropRunning = true;
 
   try {
+    // =============================
     // PREÇO SEGURO
-let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
+    // =============================
+    let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
 
-if (!price || isNaN(price) || price <= 0) {
-  console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
-  price = 0.00001; // fallback
-}
-    
-    const cfg = await storage.getConfig();
+    if (!price || isNaN(price) || price <= 0) {
+      console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
+      price = 0.00001; // fallback
+    }
 
-    // USD aleatório: 0.01 → 0.04
+    // =============================
+    // LOGS IMPORTANTES
+    // =============================
+    console.log("DROP_MIN_USD:", process.env.DROP_MIN_USD);
+    console.log("DROP_MAX_USD:", process.env.DROP_MAX_USD);
+    console.log("HBR PRICE:", price);
+
+    // =============================
+    // CONFIG DO USDRANGE
+    // =============================
     const MIN = Number(process.env.DROP_MIN_USD || 0.01);
-const MAX = Number(process.env.DROP_MAX_USD || 0.04);
+    const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
-const usdReward = Number(
-  (Math.random() * (MAX - MIN) + MIN).toFixed(4)
-);
+    const usdReward = Number(
+      (Math.random() * (MAX - MIN) + MIN).toFixed(4)
+    );
 
-    // Recompensa HBR segura
+    console.log("usdValue escolhido:", usdReward);
+
+    // =============================
+    // CÁLCULO DO HBR
+    // =============================
     const hbrAmount = Number((usdReward / price).toFixed(2));
+
+    console.log("Reward HBR calculado:", hbrAmount);
 
     if (!isFinite(hbrAmount) || isNaN(hbrAmount)) {
       console.error("❌ Erro crítico: cálculo de HBR resultou inválido:", hbrAmount);
@@ -65,8 +76,13 @@ const usdReward = Number(
       return;
     }
 
+    // =============================
+    // SELECIONA USUÁRIO
+    // =============================
     const allUsers = await storage.read();
-    const usersList = Object.values(allUsers.users).filter(u => u.wallet && !u.blocked);
+    const usersList = Object.values(allUsers.users).filter(
+      u => u.wallet && !u.blocked
+    );
 
     if (usersList.length === 0) {
       dropRunning = false;
@@ -79,6 +95,9 @@ const usdReward = Number(
       balance: (randomUser.balance || 0) + hbrAmount
     });
 
+    // =============================
+    // ENVIA MENSAGEM NO GRUPO
+    // =============================
     const GROUP_ID = process.env.GROUP_ID;
 
     if (GROUP_ID) {
@@ -94,7 +113,7 @@ const usdReward = Number(
     }
 
     await updateLastDropTimestamp(new Date());
-    
+
   } catch (err) {
     console.error("performDrop error", err);
   }
