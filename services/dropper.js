@@ -11,9 +11,7 @@ const pool = new Pool({
 const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
 let dropRunning = false;
 
-// -------------------------------------------------------
-// LAST DROP STATE
-// -------------------------------------------------------
+// ---------------------- LAST DROP ----------------------
 
 async function getLastDropTimestamp() {
   const result = await pool.query("SELECT last_drop FROM drop_state WHERE id = 1");
@@ -25,49 +23,50 @@ async function updateLastDropTimestamp(ts) {
   await pool.query("UPDATE drop_state SET last_drop = $1 WHERE id = 1", [ts]);
 }
 
-// -------------------------------------------------------
-// DROP FUNCTION
-// -------------------------------------------------------
+// ---------------------- DROP FUNCTION ----------------------
 
 async function performDrop(bot) {
   if (dropRunning) return;
   dropRunning = true;
 
   try {
-    console.log("🔍 Obtendo preço do HBR...");
+    console.log("\n🔍 Calculando DROP...");
 
+    // Preço real
     let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
 
     if (!price || isNaN(price) || price <= 0) {
-      console.error("❌ Preço inválido retornado, usando fallback");
+      console.error("❌ Preço inválido — fallback aplicado");
       price = 0.00001;
     }
 
-    console.log("💲 Preço real do HBR:", price);
+    console.log("💲 Preço HBR em USD:", price);
 
-    // valores aleatórios configuráveis
+    // Config MIN/MAX USD
     const MIN = Number(process.env.DROP_MIN_USD || 0.01);
     const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
     const usdReward = Number((Math.random() * (MAX - MIN) + MIN).toFixed(4));
 
-    console.log("🎁 USD sorteado:", usdReward);
+    console.log("🎁 Valor sorteado (USD):", usdReward);
 
+    // Conversão
     const hbrAmount = Number((usdReward / price).toFixed(2));
 
+    console.log("📦 HBR calculado:", hbrAmount);
+
     if (!isFinite(hbrAmount) || isNaN(hbrAmount)) {
-      console.error("❌ Erro crítico: HBR calculado inválido");
+      console.error("❌ HBR inválido — DROP cancelado");
       dropRunning = false;
       return;
     }
 
-    console.log("📦 HBR calculado:", hbrAmount);
-
+    // Usuários
     const allUsers = await storage.read();
     const usersList = Object.values(allUsers.users).filter(u => u.wallet && !u.blocked);
 
     if (usersList.length === 0) {
-      console.log("⚠ Nenhum usuário elegível para receber drops.");
+      console.log("⚠ Nenhum usuário apto.");
       dropRunning = false;
       return;
     }
@@ -76,16 +75,13 @@ async function performDrop(bot) {
 
     // Atualiza saldo
     const newBalance = (randomUser.balance || 0) + hbrAmount;
-
     await storage.setUser(randomUser.telegramId, { balance: newBalance });
 
-    console.log(`✅ DROP entregue para @${randomUser.username}: +${hbrAmount} HBR`);
+    console.log(`✅ DROP entregue → @${randomUser.username} ganhou ${hbrAmount} HBR`);
 
-    const GROUP_ID = process.env.GROUP_ID;
-
-    if (GROUP_ID) {
+    if (process.env.GROUP_ID) {
       await bot.sendMessage(
-        GROUP_ID,
+        process.env.GROUP_ID,
         `🎉 *DROP ENTREGUE!*\n` +
         `👤 Usuário: @${randomUser.username}\n` +
         `📦 Recompensa: *${hbrAmount} HBR*\n` +
@@ -104,9 +100,7 @@ async function performDrop(bot) {
   dropRunning = false;
 }
 
-// -------------------------------------------------------
-// START DROPPER
-// -------------------------------------------------------
+// ---------------------- STARTER ----------------------
 
 async function startDropper(bot) {
   const last = await getLastDropTimestamp();
@@ -119,11 +113,11 @@ async function startDropper(bot) {
     const diff = now - lastTs;
 
     if (diff >= DROP_INTERVAL) {
-      console.log("⚠ Drop atrasado → executando agora...");
+      console.log("⚠ Drop atrasado → executando...");
       performDrop(bot);
     } else {
       nextDropIn = DROP_INTERVAL - diff;
-      console.log(`⏳ Próximo drop em ${(nextDropIn / 1000 / 60).toFixed(1)} min`);
+      console.log(`⏳ Próximo drop em ${(nextDropIn / 60000).toFixed(1)} min`);
     }
   }
 
