@@ -14,16 +14,17 @@ function botUserHandlers(bot){
   // /mypoints
   bot.onText(/\/mypoints/, async (msg) => {
     const u = await storage.getUser(msg.from.id);
+
     if (!u)
       return bot.sendMessage(msg.chat.id, '❌ Você não está registrado. Use /registrar 0xSuaCarteira (no privado).');
 
+    const balance = u.balance || 0;
     const today = u.totalToday || 0;
-    const all = u.totalAllTime || 0;
-    const withdrawn = u.totalWithdrawn || 0;
+    const withdrawn = u.totalWithdrawn || 0; // ainda não existe, será sempre 0
 
     await bot.sendMessage(
       msg.chat.id,
-      `📊 *Seus ganhos*\nHoje: ${today} HBR\nTotal: ${all} HBR\nRetirado: ${withdrawn} HBR`,
+      `📊 *Seus ganhos*\nHoje: ${today} HBR\nSaldo Atual: ${balance} HBR\nRetirado: ${withdrawn} HBR`,
       { parse_mode: "Markdown" }
     );
   });
@@ -40,16 +41,10 @@ function botUserHandlers(bot){
     await storage.setUser(msg.from.id, {
       wallet,
       username: msg.from.username || msg.from.first_name,
-      registeredAt: new Date().toISOString(),
-      weight: 1
+      registeredAt: new Date().toISOString()
     });
 
-    const GROUP_ID = process.env.GROUP_ID;
-    if (GROUP_ID){
-      await storage.addPublicLog({
-        text: `📥 @${msg.from.username || msg.from.first_name} entrou nos drops.`
-      });
-    }
+    await bot.sendMessage(chatId, '✅ Carteira registrada com sucesso!');
   });
 
   // /withdraw <amount>
@@ -64,57 +59,41 @@ function botUserHandlers(bot){
     if (amount < MIN_WITHDRAW) {
       return bot.sendMessage(
         msg.chat.id,
-        `⚠️ O valor mínimo para saque é *${MIN_WITHDRAW} HBR*.\nEnvie /withdraw <quantia> acima deste valor.`,
+        `⚠️ O valor mínimo para saque é *${MIN_WITHDRAW} HBR*.`,
         { parse_mode: 'Markdown' }
       );
     }
 
-    const u = await storage.getUser(msg.from.id);  // <-- PRECISA DO await
+    const u = await storage.getUser(msg.from.id);
 
     if (!u || !u.wallet)
       return bot.sendMessage(msg.chat.id, '❌ Você precisa registrar sua carteira antes de solicitar saque.');
 
-    // bloqueado?
-    const blocked = await storage.isBlocked(msg.from.id);
-    if (blocked) {
-      return bot.sendMessage(msg.chat.id, '🚫 Sua conta está bloqueada por suspeita. Contate um admin.');
-    }
+    const balance = u.balance || 0;
 
-    // calcula saldo
-    const balance = (u.totalAllTime || 0) - (u.totalWithdrawn || 0);
     if (balance < amount) {
-      await storage.recordAttempt(msg.from.id, 'withdraw_fail_insufficient');
-      return bot.sendMessage(msg.chat.id, `❌ Saldo insuficiente. Seu saldo disponível é ${balance} HBR.`);
+      return bot.sendMessage(
+        msg.chat.id,
+        `❌ Saldo insuficiente. Seu saldo disponível é ${balance} HBR.`
+      );
     }
 
-    // cria requisição
+    // Ainda não existe sistema de requests no storage.
+    // Só avisamos o admin (manual)
     const id = uuidv4();
-    const req = {
-      id,
-      telegramId: msg.from.id,
-      username: msg.from.username || msg.from.first_name,
-      amount,
-      wallet: u.wallet,
-      createdAt: new Date().toISOString(),
-      status: 'pending'
-    };
 
-    await storage.addWithdrawal(req);
+    await bot.sendMessage(
+      msg.chat.id,
+      `📥 Pedido enviado!\nID: ${id}\nAguarde o admin processar manualmente.`
+    );
 
-    await bot.sendMessage(msg.chat.id, `✅ Solicitação criada.\nID: ${id}\nUm admin irá revisar.`);
-
-    // avisa o admin
     const ADMIN_ID = process.env.ADMIN_ID;
     if (ADMIN_ID) {
-      try {
-        await bot.sendMessage(
-          ADMIN_ID,
-          `📥 *Novo Pedido de Saque*\n\nID: ${id}\nUsuário: @${req.username}\nValor: ${amount} HBR\nWallet: ${req.wallet}`,
-          { parse_mode: "Markdown" }
-        );
-      } catch(e) {
-        console.log("Admin DM falhou. O admin precisa iniciar o bot.");
-      }
+      await bot.sendMessage(
+        ADMIN_ID,
+        `📥 *Novo Pedido de Saque*\n\nID: ${id}\nUsuário: @${msg.from.username}\nValor: ${amount} HBR\nWallet: ${u.wallet}`,
+        { parse_mode: "Markdown" }
+      );
     }
   });
 }
