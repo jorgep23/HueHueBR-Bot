@@ -1,7 +1,7 @@
 // services/dropper.js
 
-const db = require('../services/storage');
-const { pool } = require('../services/storage');
+const db = require('./storage');
+const { pool } = require('./storage');
 
 async function getLastDropTimestamp() {
   const res = await pool.query("SELECT last_drop FROM drop_state WHERE id = 1");
