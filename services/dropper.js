@@ -34,17 +34,14 @@ async function performDrop(bot) {
   dropRunning = true;
 
   try {
-    // ===========================
     // PREÇO SEGURO
-    // ===========================
-    let price = await getHbrPriceUsd();
+let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
 
-    if (!price || isNaN(price) || price <= 0) {
-      console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
-      // fallback para não quebrar os drops
-      price = 0.00001;
-    }
-
+if (!price || isNaN(price) || price <= 0) {
+  console.error("⚠️ Preço inválido do HBR! Valor recebido:", price);
+  price = 0.00001; // fallback
+}
+    
     const cfg = await storage.getConfig();
 
     // USD aleatório: 0.01 → 0.04
