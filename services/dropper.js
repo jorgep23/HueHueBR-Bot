@@ -2,7 +2,6 @@
 
 const storage = require('../services/storage');
 const { getHbrPriceUsd } = require('./pancakeswap');
-const db = require('./db'); // seu módulo PostgreSQL
 
 const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
 let dropRunning = false;
