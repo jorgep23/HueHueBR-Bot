@@ -28,7 +28,7 @@ function botUserHandlers(bot){
       return bot.sendMessage(chatId, '🔐 Use este comando em PRIVADO com o bot: /registrar 0xSuaCarteira');
     }
     const user = await storage.setUser(msg.from.id, { wallet: wallet, username: msg.from.username || msg.from.first_name, registeredAt: new Date().toISOString(), weight:1 });
-    await bot.sendMessage(chatId, '✅ Registrado! Sua carteira foi salva. Você passará a concorrer nos drops automáticos.');
+    //await bot.sendMessage(chatId, '✅ Registrado! Sua carteira foi salva. Você passará a concorrer nos drops automáticos.');
     const GROUP_ID = process.env.GROUP_ID;
     if (GROUP_ID){
       await storage.addPublicLog({ text: `📥 @${msg.from.username || msg.from.first_name} entrou nos drops.` });
