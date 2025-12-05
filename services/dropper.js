@@ -48,7 +48,12 @@ async function performDrop(bot) {
     const cfg = await storage.getConfig();
 
     // USD aleatório: 0.01 → 0.04
-    const usdReward = Number((Math.random() * 0.03 + 0.01).toFixed(4));
+    const MIN = Number(process.env.DROP_MIN_USD || 0.01);
+const MAX = Number(process.env.DROP_MAX_USD || 0.04);
+
+const usdReward = Number(
+  (Math.random() * (MAX - MIN) + MIN).toFixed(4)
+);
 
     // Recompensa HBR segura
     const hbrAmount = Number((usdReward / price).toFixed(2));
