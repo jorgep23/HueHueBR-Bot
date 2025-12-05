@@ -1,6 +1,12 @@
 // services/dropper.js
 
-const storage = require('../services/storage');
+const db = require('./storage');
+const { pool } = require('./storage');
+
+async function getLastDropTimestamp() {
+  const res = await pool.query("SELECT last_drop FROM drop_state WHERE id = 1");
+  return res.rows.length ? res.rows[0].last_drop : null;
+}
 const { getHbrPriceUsd } = require('./pancakeswap');
 
 const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
