@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS attempts (
   type TEXT,
   ts BIGINT
 );
+CREATE TABLE IF NOT EXISTS drop_state (
+  id INTEGER PRIMARY KEY,
+  last_drop TIMESTAMP
+);
+INSERT INTO drop_state (id, last_drop)
+VALUES (1, NOW() - INTERVAL '20 minutes')
+ON CONFLICT (id) DO NOTHING;
 `;
 
 const DEFAULT_CONFIG = {
