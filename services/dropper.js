@@ -6,37 +6,34 @@ const { getHbrPriceUsd } = require('./pancakeswap');
 const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
 let dropRunning = false;
 
+// --- PERSISTÊNCIA DO DROP ---
 async function getLastDropTimestamp() {
-  const result = await db.query("SELECT last_drop FROM drop_state WHERE id = 1");
-  if (result.rows.length === 0) return null;
-  return result.rows[0].last_drop;
+  const row = await storage.getDropState();
+  return row ? row.last_drop : null;
 }
 
 async function updateLastDropTimestamp(ts) {
-  await db.query(
-    "UPDATE drop_state SET last_drop = $1 WHERE id = 1",
-    [ts]
-  );
+  await storage.updateDropState(ts);
 }
 
+// --- EXECUTA O DROP ---
 async function performDrop(bot) {
-  if (dropRunning) return; // impede duplicação
+  if (dropRunning) return;
   dropRunning = true;
 
   try {
     const price = await getHbrPriceUsd();
-    const cfg = storage.read().config;
-
-    // random USD → HBR
-    const usdReward = Number((Math.random() * 0.03 + 0.01).toFixed(4)); // $0.01 → $0.04
+    const usdReward = Number((Math.random() * 0.03 + 0.01).toFixed(4)); 
     const hbrAmount = Number((usdReward / price).toFixed(2));
 
-    const users = storage.getAllUsers().filter(u => u.wallet && !u.blocked);
-    if (users.length === 0) return;
+    const users = await storage.getAllUsers();
+    const eligible = users.filter(u => u.wallet && !u.blocked);
 
-    const randomUser = users[Math.floor(Math.random() * users.length)];
+    if (eligible.length === 0) return;
 
-    storage.addReward(randomUser.telegramId, hbrAmount);
+    const randomUser = eligible[Math.floor(Math.random() * eligible.length)];
+
+    await storage.addReward(randomUser.telegram_id, hbrAmount);
 
     const GROUP_ID = process.env.GROUP_ID;
     if (GROUP_ID) {
@@ -52,6 +49,7 @@ async function performDrop(bot) {
     }
 
     await updateLastDropTimestamp(new Date());
+
   } catch (err) {
     console.error("performDrop error", err);
   }
@@ -59,7 +57,7 @@ async function performDrop(bot) {
   dropRunning = false;
 }
 
-// inicia o sistema persistente
+// --- SISTEMA DE TIMER PERSISTENTE ---
 async function startDropper(bot) {
   const last = await getLastDropTimestamp();
   const now = Date.now();
@@ -73,20 +71,15 @@ async function startDropper(bot) {
     if (diff >= DROP_INTERVAL) {
       console.log("Drop atrasado → executando agora...");
       performDrop(bot);
-      nextDropIn = DROP_INTERVAL;
     } else {
       nextDropIn = DROP_INTERVAL - diff;
       console.log(`Próximo drop em ${(nextDropIn / 1000 / 60).toFixed(1)} min`);
     }
   }
 
-  // primeiro timer do ciclo
   setTimeout(() => {
     performDrop(bot);
-
-    // timers seguintes sempre a cada 20 minutos
     setInterval(() => performDrop(bot), DROP_INTERVAL);
-
   }, nextDropIn);
 }
 
