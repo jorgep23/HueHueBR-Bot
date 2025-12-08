@@ -1,97 +1,180 @@
 // commands/admin.js
-const storage = require('../services/storage.js');
+
+const storage = require("../services/storage.js");
+const { performDrop } = require("../services/dropper.js");
 
 function isAdmin(msg) {
-  const admin = String(process.env.ADMIN_ID || '');
-  return msg && msg.from && String(msg.from.id) === admin;
+  const adminId = String(process.env.ADMIN_ID || "");
+  return msg?.from && String(msg.from.id) === adminId;
 }
 
 function botAdminHandlers(bot) {
 
-  // /setprice <valor>
+  /* ===================== PRICE ===================== */
+
   bot.onText(/\/setprice\s+([0-9]*\.?[0-9]+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
+
     const p = Number(match[1]);
-    if (isNaN(p)) return bot.sendMessage(msg.chat.id, 'Valor inválido.');
+    if (isNaN(p)) return bot.sendMessage(msg.chat.id, "Valor inválido.");
+
     await storage.updateConfig(cfg => { cfg.priceUsd = p; });
-    await bot.sendMessage(msg.chat.id, `✅ Preço atualizado para $${p}`);
+
+    await bot.sendMessage(msg.chat.id, `✅ Preço manual configurado: $${p}`);
   });
 
-  // /setinterval <minutos>
+
+  /* ===================== INTERVAL ===================== */
+
   bot.onText(/\/setinterval\s+(\d+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
+
     const m = Number(match[1]);
-    if (isNaN(m)) return bot.sendMessage(msg.chat.id, 'Intervalo inválido.');
+    if (isNaN(m)) return;
+
     await storage.updateConfig(cfg => { cfg.intervalMin = m; });
-    await bot.sendMessage(msg.chat.id, `✅ Intervalo configurado para ${m} minutos.`);
+    await bot.sendMessage(msg.chat.id, `⏱ Intervalo configurado para ${m} minutos.`);
   });
 
-  // /forcedrop <n>  (padrão = 1)
+
+  /* ===================== FORCE DROP ===================== */
+
   bot.onText(/\/forcedrop(?:\s+(\d+))?/, async (msg, match) => {
     if (!isAdmin(msg)) return;
-    const n = match && match[1] ? Number(match[1]) : 1;
-    const times = isNaN(n) ? 1 : n;
+
+    const times = match?.[1] ? Number(match[1]) : 1;
+
     for (let i = 0; i < times; i++) {
-      await require('../services/dropper').performDrop(bot);
+      await performDrop(bot);
     }
-    bot.sendMessage(msg.chat.id, `✅ Executado ${times} drop(s).`);
+
+    bot.sendMessage(msg.chat.id, `💥 Executado ${times} drop(s) agora.`);
   });
 
-  // /listwithdraws
+
+  /* ===================== WITHDRAW LIST ===================== */
+
   bot.onText(/\/listwithdraws/, async (msg) => {
     if (!isAdmin(msg)) return;
+
     const list = await storage.listWithdrawals();
-    if (!list.length) return bot.sendMessage(msg.chat.id, 'Nenhuma solicitação de saque.');
-    const lines = list
-      .slice(0, 20)
-      .map(w => `ID:${w.id} User:@${w.username ?? 'sem_username'} Amount:${w.amount} Wallet:${w.wallet}`);
-    bot.sendMessage(msg.chat.id, 'Pending:\n' + lines.join('\n'));
+
+    if (!list.length)
+      return bot.sendMessage(msg.chat.id, "Nenhuma solicitação pendente.");
+
+    const lines = list.slice(0, 20).map(w =>
+      `ID: ${w.id}\nUser: @${w.username ?? w.telegramId}\nAmount: ${w.amount} HBR\nWallet: ${w.wallet}\n---`
+    );
+
+    bot.sendMessage(msg.chat.id, "📥 *Solicitações de saque*\n\n" + lines.join("\n"), {
+      parse_mode: "Markdown"
+    });
   });
 
-  // /approve <id>
+
+  /* ===================== APPROVE ===================== */
+
   bot.onText(/\/approve\s+([0-9a-fA-F-]+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
-    const id = match[1];
-    const req = await storage.completeWithdrawal(id, msg.from.id);
-    if (!req) return bot.sendMessage(msg.chat.id, 'ID não encontrado.');
 
-    bot.sendMessage(msg.chat.id, `✅ Solicitação aprovada e marcada como PAGA. ID: ${id}`);
+    const id = match[1];
+
+    let req = await storage.completeWithdrawal(id, msg.from.id);
+
+    if (!req)
+      return bot.sendMessage(msg.chat.id, "ID não encontrado.");
+
+    // Deduz saldo REAL do usuário
+    const u = await storage.getUser(req.telegramId);
+    await storage.setUser(req.telegramId, {
+      balance: Math.max((u.balance || 0) - req.amount, 0)
+    });
+
+    bot.sendMessage(msg.chat.id, `✅ Marca como pago: ${id}`);
 
     try {
-      await bot.sendMessage(req.telegramId, `✅ Seu saque de ${req.amount} HBR foi aprovado e pago!`);
-    } catch (e) {}
+      await bot.sendMessage(req.telegramId, `💸 Seu saque de ${req.amount} HBR foi pago!`);
+    } catch {}
 
     const GROUP_ID = process.env.GROUP_ID;
     if (GROUP_ID) {
       await bot.sendMessage(
         GROUP_ID,
-        `✅ *Saque pago!*\nUsuário: @${req.username ?? req.telegramId}\nQuantia: ${req.amount} HBR\nCarteira: \`${req.wallet}\``,
-        { parse_mode: 'Markdown' }
+        `💸 *Saque Pago!*\n👤 @${req.username}\n💰 ${req.amount} HBR\n🏦 \`${req.wallet}\``,
+        { parse_mode: "Markdown" }
       );
     }
   });
 
-  // /reject <id> <motivo>
+
+  /* ===================== REJECT ===================== */
+
   bot.onText(/\/reject\s+([0-9a-fA-F-]+)\s*(.*)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const id = match[1];
-    const reason = match[2] || 'sem motivo informado';
+    const reason = match[2] || "sem motivo";
 
-    const req = await storage.rejectWithdrawal(id, msg.from.id, reason);
-    if (!req) return bot.sendMessage(msg.chat.id, 'ID não encontrado.');
+    // FIX: storage tem rejectWithdrawal? não → implementado como "delete request"
+    const pending = await storage.popWithdrawal(id);
+
+    if (!pending)
+      return bot.sendMessage(msg.chat.id, "ID não encontrado.");
 
     try {
-      await bot.sendMessage(req.telegramId, `❌ Seu saque foi rejeitado. Motivo: ${reason}`);
-    } catch (e) {}
+      await bot.sendMessage(pending.telegramId, `❌ Saque rejeitado. Motivo: ${reason}`);
+    } catch {}
 
-    bot.sendMessage(msg.chat.id, `❌ Solicitação rejeitada. ID: ${id}`);
+    bot.sendMessage(msg.chat.id, `❌ Rejeitado: ${id}`);
   });
 
-  // /adminlogs
-  bot.onText(/\/adminlogs/, async (msg) => {
+
+  /* ===================== BLOCK, UNBLOCK ===================== */
+
+  bot.onText(/\/blocked/, async (msg) => {
     if (!isAdmin(msg)) return;
 
+    const db = await storage.read();
+    const blocked = Object.entries(db.users)
+      .filter(([_, u]) => u.blocked)
+      .map(([id, u]) => `@${u.username ?? id} (${id})`);
+
+    bot.sendMessage(
+      msg.chat.id,
+      blocked.length ? "🚫 Bloqueados:\n" + blocked.join("\n") : "Nenhum bloqueado."
+    );
+  });
+
+  bot.onText(/\/unblock\s+(\d+)/, async (msg, match) => {
+    if (!isAdmin(msg)) return;
+
+    const id = match[1];
+
+    const u = await storage.unblockUser(id);
+    if (!u)
+      return bot.sendMessage(msg.chat.id, "Usuário não encontrado.");
+
+    bot.sendMessage(msg.chat.id, `🔓 Desbloqueado @${u.username ?? id}`);
+  });
+
+
+  /* ===================== DAILY LIMIT ===================== */
+
+  bot.onText(/\/setmaxdailyusd\s+([0-9]*\.?[0-9]+)/, async (msg, match) => {
+    if (!isAdmin(msg)) return;
+
+    const v = Number(match[1]);
+    if (isNaN(v))
+      return bot.sendMessage(msg.chat.id, "Valor inválido.");
+
+    await storage.updateConfig(cfg => { cfg.maxDailyRewardUsd = v; });
+
+    bot.sendMessage(msg.chat.id, `⚙️ Limite diário setado: $${v}`);
+  });
+
+}
+
+module.exports = { botAdminHandlers };
     const db = await storage.read();
     const logs = (db.logsAdmin || [])
       .slice(0, 50)
