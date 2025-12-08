@@ -1,5 +1,5 @@
 // commands/admin.js
-const storage = require('../services/storage');
+const storage = require('../services/storage.js');
 
 function isAdmin(msg) {
   const admin = String(process.env.ADMIN_ID || '');
