@@ -39,34 +39,31 @@ const { startDropper } = require('./services/dropper.js');
   await startDropper(bot);
 
   // daily reset
-let lastResetDay = new Date().getUTCDate();  
+let lastResetDay = new Date().toISOString().slice(0,10);
 
 setInterval(async () => {
-    const now = new Date();
-    const today = now.getUTCDate();  // compara apenas o dia do mês
+  const today = new Date().toISOString().slice(0,10);
 
-    if (today !== lastResetDay) {
-        console.log('Running daily reset');
+  if (today !== lastResetDay) {
+    console.log("Running daily reset");
 
-        try {
-            await storage.resetDailyTotals();
-            lastResetDay = today;
+    try {
+      await storage.resetDailyTotals();
+      lastResetDay = today;
 
-            const GROUP_ID = process.env.GROUP_ID;
-
-            if (GROUP_ID) {
-                await bot.sendMessage(
-                    GROUP_ID,
-                    `🕛 *Reset Diário*\n\nOs limites e a recompensa diária foram reiniciados automaticamente.\nBoa sorte nos próximos drops! 🚀`,
-                    { parse_mode: 'Markdown' }
-                );
-            }
-        } catch (e) {
-            console.error('daily reset error', e);
-        }
+      const GROUP_ID = process.env.GROUP_ID;
+      if (GROUP_ID) {
+        await bot.sendMessage(
+          GROUP_ID,
+          `🕛 *Reset Diário*\n\nOs limites e a recompensa diária foram reiniciados automaticamente.\nBoa sorte nos próximos drops! 🚀`,
+          { parse_mode: "Markdown" }
+        );
+      }
+    } catch(e) {
+      console.error("daily reset error", e);
     }
+  }
 }, 60 * 1000);
-
 
   // express server for webhook
   const app = express();
