@@ -62,7 +62,7 @@ async function performDrop(bot) {
 
 
     /* ---------- BÔNUS NFT FOUNDERS ---------- */
-    const founderCount = await getFounderCount(randomUser.wallet);
+    const founderCount = await getFounderCount(String(randomUser.wallet));
     const bonusPct     = Math.min(founderCount * 0.05, 0.25);
 
     const bonusHbr = Number((baseHbr * bonusPct).toFixed(2));
