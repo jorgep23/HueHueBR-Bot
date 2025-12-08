@@ -380,6 +380,7 @@ module.exports = {
 
   recordAttempt,
   countRecentAttempts,
+  pool,
 
   addPublicLog,
   addAdminLog,
