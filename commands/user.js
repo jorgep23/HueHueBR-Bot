@@ -27,27 +27,21 @@ function botUserHandlers(bot) {
   /* ========================= MYPOINTS ========================= */
 
   bot.onText(/\/mypoints/, async (msg) => {
-    const chatId = msg.chat.id;
-    const u = await storage.getUser(msg.from.id);
+  const u = await storage.getUser(msg.from.id);
 
-    if (!u)
-      return bot.sendMessage(chatId, "❌ Você não está registrado. Use /registrar 0xSuaCarteira");
+  if (!u)
+    return bot.sendMessage(msg.chat.id, '❌ Você não está registrado. Use /registrar 0xSuaCarteira (no privado).');
 
-    const balance = u.balance || 0;
-    const today = u.totalToday || 0;
-    const total = u.totalAllTime || 0;
-    const withdrawn = u.totalWithdrawn || 0;
+  const balance = (u.balance || 0).toFixed(2);
+  const today = (u.totalToday || 0).toFixed(2);
+  const withdrawn = (u.totalWithdrawn || 0).toFixed(2);
 
-    await bot.sendMessage(
-      chatId,
-      `📊 *Seus ganhos*\n\n` +
-      `🟢 Hoje: ${today} HBR\n` +
-      `📦 Saldo: ${balance} HBR\n` +
-      `📈 Total recebido: ${total} HBR\n` +
-      `💸 Retirado: ${withdrawn} HBR`,
-      { parse_mode: "Markdown" }
-    );
-  });
+  await bot.sendMessage(
+    msg.chat.id,
+    `📊 *Seus ganhos*\nHoje: ${today} HBR\nSaldo Atual: ${balance} HBR\nRetirado: ${withdrawn} HBR`,
+    { parse_mode: "Markdown" }
+  );
+});
 
 
   /* ========================= REGISTRAR ========================= */
