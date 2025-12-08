@@ -1,5 +1,5 @@
 // commands/registrar.js
-const storage = require('../services/storage');
+const storage = require('../services/storage.js');
 
 function botRegisterHandlers(bot) {
 
