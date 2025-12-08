@@ -78,6 +78,25 @@ setInterval(async () => {
     }
   });
 
+  // test-founders.js
+import { ethers } from "ethers";
+
+async function main() {
+  const provider = new ethers.JsonRpcProvider("https://bsc-dataseed.binance.org/");
+  const contract = new ethers.Contract(
+    "0x8984bbd48BC0e945889EaeB4d2aFD031783fB411",
+    [ "function balanceOf(address owner) view returns (uint256)" ],
+    provider
+  );
+
+  const wallet = "0x68591b92856dEA3E9399751fdC2DDC8aB84818a5";  // sua carteira
+  const n = await contract.balanceOf(wallet);
+  console.log("Founders balance:", n.toString());
+}
+
+main().catch(console.error);
+
+  
   app.get('/', (req,res) => res.json({ ok:true, bot: 'HueHueBR Airdrop Bot', webhook: webhookUrl }));
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`🚀 HTTP server listening on port ${PORT}`));
