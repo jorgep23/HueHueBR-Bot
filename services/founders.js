@@ -2,7 +2,7 @@
 const { ethers } = require("ethers");
 
 const provider = new ethers.JsonRpcProvider(
-  process.env.BSC_RPC || "https://bsc-dataseed1.binance.org/"
+  process.env.BSC_RPC || "https://bsc-mainnet.public.blastapi.io"
 );
 
 const FOUNDERS_CONTRACT = "0x8984bbd48BC0e945889EaeB4d2aFD031783fB411";
@@ -15,22 +15,20 @@ async function getFounderCount(wallet) {
   if (!wallet) return 0;
 
   try {
-    const w = ethers.getAddress(wallet.toLowerCase());
+    const contract = new ethers.Contract(FOUNDERS_CONTRACT, erc721Abi, provider);
 
-    const contract = new ethers.Contract(
-      FOUNDERS_CONTRACT,
-      erc721Abi,
-      provider
-    );
+    // NORMALIZA
+    const addr = wallet.toLowerCase();
 
-    const count = await contract.balanceOf(w);
+    // CHAMADA REAL
+    const count = await contract.balanceOf(addr);
 
-    console.log(`🧩 NFT Founders balanceOf(${w}) =`, count.toString());  // <--- DEBUG REAL
+    // LOG PRO HARD DEBUG
+    console.log(`🧩 NFT Founders balanceOf(${addr}) = ${count.toString()}`);
 
     return Number(count);
-
   } catch (err) {
-    console.error("❌ founders balanceOf ERROR:", err);
+    console.error("❌ founders.js ERRO:", err);
     return 0;
   }
 }
