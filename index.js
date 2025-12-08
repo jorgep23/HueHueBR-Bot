@@ -79,8 +79,6 @@ setInterval(async () => {
   });
 
   // test-founders.js
-import { ethers } from "ethers";
-
 async function main() {
   const provider = new ethers.JsonRpcProvider("https://bsc-dataseed.binance.org/");
   const contract = new ethers.Contract(
