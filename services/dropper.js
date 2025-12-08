@@ -8,65 +8,65 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.PG_CONNECTION
 });
 
-const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
+const DROP_INTERVAL = 20 * 60 * 1000;
 let dropRunning = false;
 
 
-// -------------------------------------------------------
-// LAST DROP STATE
-// -------------------------------------------------------
+/* ---------------------------------------------
+   LAST DROP STATE (PostgreSQL)
+---------------------------------------------- */
 async function getLastDropTimestamp() {
-  const result = await pool.query("SELECT last_drop FROM drop_state WHERE id = 1");
-  if (result.rows.length === 0) return null;
-  return result.rows[0].last_drop;
+  const r = await pool.query("SELECT last_drop FROM drop_state WHERE id=1");
+  return r.rows.length ? r.rows[0].last_drop : null;
 }
 
 async function updateLastDropTimestamp(ts) {
-  await pool.query("UPDATE drop_state SET last_drop = $1 WHERE id = 1", [ts]);
+  await pool.query("UPDATE drop_state SET last_drop=$1 WHERE id=1", [ts]);
 }
 
 
-// -------------------------------------------------------
-// DROP FUNCTION
-// -------------------------------------------------------
+/* ---------------------------------------------
+   PERFORM DROP
+---------------------------------------------- */
 async function performDrop(bot) {
   if (dropRunning) return;
   dropRunning = true;
 
   try {
+
     console.log("\n==================== DROP ====================");
 
-    // 1) preço
+    /* ---------- 1) REAL PRICE ---------- */
     let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
 
     if (!price || isNaN(price) || price <= 0) {
-      console.error("⚠️ Preço inválido HBR → fallback");
+      console.error("⚠️ Preço inválido → fallback aplicado");
       price = 0.00001;
     }
 
-    console.log("💲 HBR Price (USD):", price);
+    console.log("💲 HBR Price:", price);
 
 
-    // 2) valores aleatórios configuráveis
+    /* ---------- 2) RANDOM USD ---------- */
     const MIN = Number(process.env.DROP_MIN_USD || 0.01);
     const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
     const usdReward = Number((Math.random() * (MAX - MIN) + MIN).toFixed(4));
     const hbrAmount = Number((usdReward / price).toFixed(2));
 
-    console.log("🎁 Sorteado USD:", usdReward);
-    console.log("📦 Calculado HBR:", hbrAmount);
-
+    console.log("🎁 USD sorteado:", usdReward);
+    console.log("📦 HBR calculado:", hbrAmount);
 
     if (!isFinite(hbrAmount) || isNaN(hbrAmount) || hbrAmount <= 0) {
-      console.error("❌ HBR inválido — DROP cancelado");
+      console.error("❌ Valor HBR inválido, cancelando drop");
       dropRunning = false;
       return;
     }
 
 
-    // 3) usuários
+    /* ---------- 3) SELECT USER ---------- */
     const allUsers = await storage.read();
+
     const usersList = Object.entries(allUsers.users)
       .map(([telegramId, data]) => ({
         telegramId,
@@ -74,54 +74,60 @@ async function performDrop(bot) {
       }))
       .filter(u => u.wallet && !u.blocked);
 
-
-    if (usersList.length === 0) {
+    if (!usersList.length) {
       console.log("⚠ Nenhum usuário elegível.");
       dropRunning = false;
       return;
     }
 
+    const randomUser =
+      usersList[Math.floor(Math.random() * usersList.length)];
 
-    // 4) escolhe random
-    const randomUser = usersList[Math.floor(Math.random() * usersList.length)];
-
-    console.log("👤 Escolhido:", randomUser.username, randomUser.telegramId);
+    console.log("👤 User escolhido:", randomUser.telegramId, randomUser.username);
 
 
-    // 5) atualiza pontuação correta
-    const today = Math.floor(Date.now() / (24*3600*1000));
+    /* ---------- 4) UPDATE BALANCES ---------- */
+    const today = Math.floor(Date.now()/(24*3600*1000));
 
     let {
       balance = 0,
       totalAllTime = 0,
       totalToday = 0,
+      totalWithdrawn = 0,
       lastDropDay = today
     } = randomUser;
 
-
-    // reset diário individual
     if (lastDropDay !== today) {
       totalToday = 0;
       lastDropDay = today;
     }
 
+    totalAllTime += hbrAmount;
+    totalToday += hbrAmount;
+    balance = totalAllTime - totalWithdrawn;
+
 
     const newData = {
-      balance: balance + hbrAmount,
-      totalAllTime: totalAllTime + hbrAmount,
-      totalToday: totalToday + hbrAmount,
+      telegramId: randomUser.telegramId,
+      username: randomUser.username,
+      wallet: randomUser.wallet,
+
+      balance,
+      totalAllTime,
+      totalToday,
+      totalWithdrawn,
       lastDropDay
     };
 
+
     await storage.setUser(randomUser.telegramId, newData);
 
-
-    // 6) log no terminal
-    console.log("💾 Novo saldo:", newData);
+    console.log("💾 Novo saldo atualizado:", newData);
 
 
-    // 7) mensagem no grupo
+    /* ---------- 5) SEND GROUP MESSAGE ---------- */
     const GROUP_ID = process.env.GROUP_ID;
+
     if (GROUP_ID) {
       await bot.sendMessage(
         GROUP_ID,
@@ -135,38 +141,36 @@ async function performDrop(bot) {
     }
 
 
-    // 8) salva timestamp
+    /* ---------- 6) UPDATE LAST DROP ---------- */
     await updateLastDropTimestamp(new Date());
 
+
   } catch (err) {
-    console.error("performDrop error", err);
+    console.error("DROP ERROR:", err);
   }
 
   dropRunning = false;
 }
 
 
-
-// -------------------------------------------------------
-// START DROPPER
-// -------------------------------------------------------
+/* ---------------------------------------------
+   START DROPPER
+---------------------------------------------- */
 async function startDropper(bot) {
+
   const last = await getLastDropTimestamp();
   const now = Date.now();
 
   let nextDropIn = DROP_INTERVAL;
 
   if (last) {
-    const lastTs = new Date(last).getTime();
-    const diff = now - lastTs;
+    const diff = now - new Date(last).getTime();
 
     if (diff >= DROP_INTERVAL) {
-      console.log("⚠ Drop atrasado — executando agora...");
       performDrop(bot);
-      nextDropIn = DROP_INTERVAL;
     } else {
       nextDropIn = DROP_INTERVAL - diff;
-      console.log(`⏳ Próximo drop em ${(nextDropIn / 60000).toFixed(1)} min`);
+      console.log(`⏳ Próximo drop em ${(nextDropIn/60000).toFixed(1)} min`);
     }
   }
 
@@ -177,4 +181,7 @@ async function startDropper(bot) {
 }
 
 
-module.exports = { startDropper, performDrop };
+module.exports = {
+  startDropper,
+  performDrop
+};
