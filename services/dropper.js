@@ -1,7 +1,7 @@
 // services/dropper.js
 
 const storage = require('./storage.js');
-const { getHbrPriceUsd } = require('./pancakeswap');
+const { getHbrPriceUsd } = require('./pancakeswap.js');
 const { Pool } = require('pg');
 
 const pool = new Pool({
