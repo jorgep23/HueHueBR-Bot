@@ -4,11 +4,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const path = require('path');
 
-const storage = require('./services/storage');
-const { botRegisterHandlers } = require('./commands/registrar');
-const { botAdminHandlers } = require('./commands/admin');
-const { botUserHandlers } = require('./commands/user');
-const { startDropper } = require('./services/dropper');
+const storage = require('./services/storage.js');
+const { botRegisterHandlers } = require('./commands/registrar.js');
+const { botAdminHandlers } = require('./commands/admin.js');
+const { botUserHandlers } = require('./commands/user.js');
+const { startDropper } = require('./services/dropper.js');
 
 (async () => {
   // env checks
