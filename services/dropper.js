@@ -2,6 +2,8 @@
 
 const storage = require('./storage');
 const { getHbrPriceUsd } = require('./pancakeswap');
+
+const { getFounderCount } = require('./founders');  // <--- NOVO
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -52,12 +54,12 @@ async function performDrop(bot) {
     const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
     const usdReward = Number((Math.random() * (MAX - MIN) + MIN).toFixed(4));
-    const hbrAmount = Number((usdReward / price).toFixed(2));
+    const baseHbr = Number((usdReward / price).toFixed(2));
 
     console.log("🎁 USD sorteado:", usdReward);
-    console.log("📦 HBR calculado:", hbrAmount);
+    console.log("📦 HBR calculado (base):", baseHbr);
 
-    if (!isFinite(hbrAmount) || isNaN(hbrAmount) || hbrAmount <= 0) {
+    if (!isFinite(baseHbr) || isNaN(baseHbr) || baseHbr <= 0) {
       console.error("❌ Valor HBR inválido, cancelando drop");
       dropRunning = false;
       return;
@@ -86,7 +88,20 @@ async function performDrop(bot) {
     console.log("👤 User escolhido:", randomUser.telegramId, randomUser.username);
 
 
-    /* ---------- 4) UPDATE BALANCES ---------- */
+    /* ---------- 4) BONUS FOUNDERS ---------- */
+
+    const founderCount = await getFounderCount(randomUser.wallet);
+    const bonusPct = Math.min(founderCount * 0.05, 0.25);  // 5% por NFT até 25%
+
+    const bonusHbr = Number((baseHbr * bonusPct).toFixed(2));
+    const finalHbr = Number((baseHbr + bonusHbr).toFixed(2));
+
+    console.log(`👑 Founders: ${founderCount} → Bônus: ${(bonusPct * 100).toFixed(0)}%`);
+    console.log("💎 HBR bônus:", bonusHbr);
+    console.log("📦 Total final HBR:", finalHbr);
+
+
+    /* ---------- 5) UPDATE USER BALANCE ---------- */
     const today = Math.floor(Date.now()/(24*3600*1000));
 
     let {
@@ -102,10 +117,9 @@ async function performDrop(bot) {
       lastDropDay = today;
     }
 
-    totalAllTime += hbrAmount;
-    totalToday += hbrAmount;
+    totalAllTime += finalHbr;
+    totalToday += finalHbr;
     balance = totalAllTime - totalWithdrawn;
-
 
     const newData = {
       telegramId: randomUser.telegramId,
@@ -119,29 +133,47 @@ async function performDrop(bot) {
       lastDropDay
     };
 
-
     await storage.setUser(randomUser.telegramId, newData);
 
     console.log("💾 Novo saldo atualizado:", newData);
 
 
-    /* ---------- 5) SEND GROUP MESSAGE ---------- */
+    /* ---------- 6) MESSAGE TO GROUP ---------- */
     const GROUP_ID = process.env.GROUP_ID;
 
     if (GROUP_ID) {
-      await bot.sendMessage(
-        GROUP_ID,
-        `🎉 *DROP ENTREGUE!*\n` +
-        `👤 Usuário: @${randomUser.username}\n` +
-        `📦 Recompensa: *${hbrAmount} HBR*\n` +
-        `💲 Valor: *$${usdReward}*\n` +
-        `⏱ Próximo em 20 minutos.`,
-        { parse_mode: "Markdown" }
-      );
+
+      if (founderCount > 0) {
+
+        await bot.sendMessage(
+          GROUP_ID,
+          `🔥 *DROP ESPECIAL – FOUNDER!*\n` +
+          `👤 @${randomUser.username}\n` +
+          `👑 NFT Founders: *${founderCount}*\n` +
+          `🎁 Base: ${baseHbr} HBR\n` +
+          `💎 Bônus (${(bonusPct * 100).toFixed(0)}%): +${bonusHbr} HBR\n` +
+          `🚀 Total: *${finalHbr} HBR*\n` +
+          `💲 Valor: $${usdReward}\n` +
+          `⏱ Próximo em 20 minutos.`,
+          { parse_mode: "Markdown" }
+        );
+
+      } else {
+
+        await bot.sendMessage(
+          GROUP_ID,
+          `🎉 *DROP ENTREGUE!*\n` +
+          `👤 @${randomUser.username}\n` +
+          `📦 Recompensa: *${finalHbr} HBR*\n` +
+          `💲 Valor: *$${usdReward}*\n` +
+          `⏱ Próximo em 20 minutos.`,
+          { parse_mode: "Markdown" }
+        );
+      }
     }
 
 
-    /* ---------- 6) UPDATE LAST DROP ---------- */
+    /* ---------- 7) UPDATE LAST DROP ---------- */
     await updateLastDropTimestamp(new Date());
 
 
