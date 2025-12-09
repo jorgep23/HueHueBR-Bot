@@ -9,62 +9,93 @@ function isAdmin(msg) {
 
 function botAdminHandlers(bot) {
 
-  /* ===================== PRICE ===================== */
-
+  /* ==========================================================
+     SET PRICE MANUAL
+  ========================================================== */
   bot.onText(/\/setprice\s+([0-9]*\.?[0-9]+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const p = Number(match[1]);
-    if (isNaN(p)) return bot.sendMessage(msg.chat.id, "Valor inválido.");
+    if (isNaN(p))
+      return bot.sendMessage(msg.chat.id, "❌ Valor inválido.");
 
     await storage.updateConfig(cfg => { cfg.priceUsd = p; });
-    bot.sendMessage(msg.chat.id, `✅ Preço manual configurado: $${p}`);
+
+    bot.sendMessage(
+      msg.chat.id,
+      `💲 *Preço manual configurado!*\nNovo valor: *$${p}*`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 
-  /* ===================== INTERVAL ===================== */
-
+  /* ==========================================================
+     SET INTERVAL
+  ========================================================== */
   bot.onText(/\/setinterval\s+(\d+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const m = Number(match[1]);
-    if (isNaN(m)) return;
+
+    if (isNaN(m))
+      return bot.sendMessage(msg.chat.id, "❌ Valor inválido.");
 
     await storage.updateConfig(cfg => { cfg.intervalMin = m; });
-    bot.sendMessage(msg.chat.id, `⏱ Intervalo de drop definido para ${m} minutos.`);
+
+    bot.sendMessage(
+      msg.chat.id,
+      `⏱ *Intervalo atualizado!*\nDrops agora ocorrerão a cada *${m} minutos*.`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 
-  /* ===================== FORCE DROP ===================== */
-
+  /* ==========================================================
+     FORCE DROP
+  ========================================================== */
   bot.onText(/\/forcedrop(?:\s+(\d+))?/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const times = Number(match?.[1] || 1);
 
+    bot.sendMessage(msg.chat.id, `⚡ Executando *${times} drop(s)*...`, {
+      parse_mode: "Markdown"
+    });
+
     for (let i = 0; i < times; i++) {
       await performDrop(bot);
     }
 
-    bot.sendMessage(msg.chat.id, `💥 Executado ${times} drop(s).`);
+    bot.sendMessage(
+      msg.chat.id,
+      `🚀 *Drop(s) concluídos!* (${times})`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 
-  /* ===================== WITHDRAW LIST ===================== */
-
+  /* ==========================================================
+     LIST WITHDRAWS
+  ========================================================== */
   bot.onText(/\/listwithdraws/, async (msg) => {
     if (!isAdmin(msg)) return;
 
     const list = await storage.listWithdrawals();
 
     if (!list.length)
-      return bot.sendMessage(msg.chat.id, "Nenhuma solicitação pendente.");
-
-    const lines = list
-      .slice(0, 20)
-      .map(w =>
-        `ID: ${w.id}\nUser: @${w.username ?? w.telegramId}\nAmount: ${w.amount} HBR\nWallet: ${w.wallet}\n---`
+      return bot.sendMessage(
+        msg.chat.id,
+        "📭 *Nenhuma solicitação pendente*.",
+        { parse_mode: "Markdown" }
       );
+
+    const lines = list.slice(0, 20).map(w =>
+      `🆔 *ID:* ${w.id}\n` +
+      `👤 *User:* @${w.username ?? w.telegramId}\n` +
+      `💰 *Valor:* ${w.amount} HBR\n` +
+      `💼 *Wallet:* \`${w.wallet}\`\n` +
+      `━━━━━━━━━━━━━━━`
+    );
 
     bot.sendMessage(
       msg.chat.id,
@@ -74,8 +105,9 @@ function botAdminHandlers(bot) {
   });
 
 
-  /* ===================== APPROVE ===================== */
-
+  /* ==========================================================
+     APPROVE WITHDRAW
+  ========================================================== */
   bot.onText(/\/approve\s+([0-9a-fA-F-]+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
@@ -83,65 +115,83 @@ function botAdminHandlers(bot) {
     const req = await storage.completeWithdrawal(id, msg.from.id);
 
     if (!req)
-      return bot.sendMessage(msg.chat.id, "ID não encontrado.");
+      return bot.sendMessage(msg.chat.id, "❌ ID não encontrado.");
 
-    // Atualiza saldo real
     const u = await storage.getUser(req.telegramId);
+
     await storage.setUser(req.telegramId, {
       balance: Math.max((u.balance || 0) - req.amount, 0)
     });
 
-    bot.sendMessage(msg.chat.id, `💸 Saque pago: ${id}`);
+    bot.sendMessage(
+      msg.chat.id,
+      `💸 *Saque aprovado e pago!*\nID: \`${id}\``,
+      { parse_mode: "Markdown" }
+    );
 
+    // avisar o usuário
     try {
       await bot.sendMessage(
         req.telegramId,
-        `💸 Seu saque de ${req.amount} HBR foi pago!`
+        `💸 Seu saque de *${req.amount} HBR* foi pago!`,
+        { parse_mode: "Markdown" }
       );
     } catch {}
 
+    // log público
     const GROUP_ID = process.env.GROUP_ID;
     if (GROUP_ID) {
       await bot.sendMessage(
         GROUP_ID,
-        `💸 *Saque Pago!*\n👤 @${req.username}\n💰 ${req.amount} HBR\n🏦 \`${req.wallet}\``,
+        `💸 *Saque Pago!*\n` +
+        `👤 @${req.username}\n` +
+        `💰 ${req.amount} HBR\n` +
+        `💼 \`${req.wallet}\``,
         { parse_mode: "Markdown" }
       );
     }
   });
 
 
-  /* ===================== REJECT ===================== */
-
+  /* ==========================================================
+     REJECT WITHDRAW
+  ========================================================== */
   bot.onText(/\/reject\s+([0-9a-fA-F-]+)\s*(.*)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const id = match[1];
-    const reason = match[2] || "sem motivo";
+    const reason = match[2] || "Não especificado";
 
-    // popWithdrawal NÃO EXISTE NO STORAGE ATUAL — vamos usar delete manual:
     const pending = await storage.listWithdrawals();
     const req = pending.find(r => r.id === id);
 
     if (!req)
-      return bot.sendMessage(msg.chat.id, "ID não encontrado.");
+      return bot.sendMessage(msg.chat.id, "❌ ID não encontrado.");
 
-    // deletamos da tabela
     await storage.pool.query(
       `DELETE FROM withdrawals WHERE id=$1`,
       [id]
     );
 
     try {
-      await bot.sendMessage(req.telegramId, `❌ Saque rejeitado. Motivo: ${reason}`);
+      await bot.sendMessage(
+        req.telegramId,
+        `❌ Seu saque foi rejeitado.\n*Motivo:* ${reason}`,
+        { parse_mode: "Markdown" }
+      );
     } catch {}
 
-    bot.sendMessage(msg.chat.id, `❌ Rejeitado: ${id}`);
+    bot.sendMessage(
+      msg.chat.id,
+      `❌ *Rejeitado:* ${id}`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 
-  /* ===================== BLOCKED LIST ===================== */
-
+  /* ==========================================================
+     USERS BLOCKED LIST
+  ========================================================== */
   bot.onText(/\/blocked/, async (msg) => {
     if (!isAdmin(msg)) return;
 
@@ -149,17 +199,21 @@ function botAdminHandlers(bot) {
 
     const lines = Object.entries(db.users)
       .filter(([_, u]) => u.blocked)
-      .map(([id, u]) => `@${u.username ?? id} (${id})`);
+      .map(([id, u]) => `🚫 @${u.username ?? id} (${id})`);
 
     bot.sendMessage(
       msg.chat.id,
-      lines.length ? `🚫 Bloqueados:\n${lines.join("\n")}` : "Nenhum usuário bloqueado."
+      lines.length
+        ? `🚫 *Usuários bloqueados:*\n${lines.join("\n")}`
+        : "📗 Nenhum usuário bloqueado.",
+      { parse_mode: "Markdown" }
     );
   });
 
 
-  /* ===================== UNBLOCK ===================== */
-
+  /* ==========================================================
+     UNBLOCK USER
+  ========================================================== */
   bot.onText(/\/unblock\s+(\d+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
@@ -167,24 +221,34 @@ function botAdminHandlers(bot) {
     const u = await storage.unblockUser(id);
 
     if (!u)
-      return bot.sendMessage(msg.chat.id, "Usuário não encontrado.");
+      return bot.sendMessage(msg.chat.id, "❌ Usuário não encontrado.");
 
-    bot.sendMessage(msg.chat.id, `🔓 Desbloqueado @${u.username ?? id}`);
+    bot.sendMessage(
+      msg.chat.id,
+      `🔓 *Desbloqueado:* @${u.username ?? id}`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 
-  /* ===================== DAILY LIMIT ===================== */
-
+  /* ==========================================================
+     SET DAILY LIMIT
+  ========================================================== */
   bot.onText(/\/setmaxdailyusd\s+([0-9]*\.?[0-9]+)/, async (msg, match) => {
     if (!isAdmin(msg)) return;
 
     const v = Number(match[1]);
+
     if (isNaN(v))
-      return bot.sendMessage(msg.chat.id, "Valor inválido.");
+      return bot.sendMessage(msg.chat.id, "❌ Valor inválido.");
 
     await storage.updateConfig(cfg => { cfg.maxDailyRewardUsd = v; });
 
-    bot.sendMessage(msg.chat.id, `⚙️ Limite diário configurado: $${v}`);
+    bot.sendMessage(
+      msg.chat.id,
+      `⚙️ *Limite diário configurado:* $${v}`,
+      { parse_mode: "Markdown" }
+    );
   });
 
 }
