@@ -21,7 +21,7 @@ function botRegisterHandlers(bot) {
       `📊 /mypoints  — seus ganhos\n` +
       `📤 /withdraw <HBR>  — saque\n` +
       `━━━━━━━━━━━━━━━━━━\n\n` +
-      `🚀 **Aperte /registrar para começar!**`;
+      `🚀 **Registre e comece a ganhar automaticamente!**`;
 
     await bot.sendMessage(chatId, text, { parse_mode: "Markdown" });
   });
