@@ -9,11 +9,11 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.PG_CONNECTION
 });
 
-const DROP_INTERVAL = 20 * 60 * 1000; // 20 minutos
+const DROP_INTERVAL = 20 * 60 * 1000;
 let dropRunning = false;
 
 /* ========================================================================
-   LAST DROP (PostgreSQL)
+   LAST DROP STATE (PostgreSQL)
 ======================================================================= */
 async function getLastDropTimestamp() {
   const r = await pool.query("SELECT last_drop FROM drop_state WHERE id=1");
@@ -21,7 +21,7 @@ async function getLastDropTimestamp() {
 }
 
 async function updateLastDropTimestamp(ts) {
-  await pool.query("UPDATE last_drop_state SET last_drop=$1 WHERE id=1", [ts]);
+  await pool.query("UPDATE drop_state SET last_drop=$1 WHERE id=1", [ts]);
 }
 
 
@@ -35,63 +35,139 @@ async function performDrop(bot) {
   try {
     console.log("\n==================== DROP ====================");
 
-    // 1) PREÇO DO HBR EM USD
+    /* ---------- 1) PREÇO ---------- */
     let price = await getHbrPriceUsd(process.env.HBR_CONTRACT);
     if (!price || isNaN(price) || price <= 0) {
-      console.warn("⚠️ HBR price inválido → fallback = 0.00001");
       price = 0.00001;
     }
-    console.log("💲 HBR PRICE USD:", price);
 
-    // 2) VALOR USD SORTEADO
+    /* ---------- 2) RANDOM USD ---------- */
     const MIN = Number(process.env.DROP_MIN_USD || 0.01);
     const MAX = Number(process.env.DROP_MAX_USD || 0.04);
 
-    const usdRewardRaw = Math.random() * (MAX - MIN) + MIN;
-    const usdReward = Number(usdRewardRaw.toFixed(4));       // 4 casas
-    const baseHbr = Number((usdReward / price).toFixed(4));  // 4 casas
-
-    console.log({ MIN, MAX, usdReward, baseHbr });
+    const usdReward = Number((Math.random() * (MAX - MIN) + MIN).toFixed(4));
+    const baseHbr = Number((usdReward / price).toFixed(4));
 
     if (!isFinite(baseHbr) || baseHbr <= 0) {
-      console.error("❌ baseHbr inválido → cancelando drop");
       dropRunning = false;
       return;
     }
 
-    // 3) ESCOLHER USUÁRIO ELEGÍVEL
+    /* ---------- 3) USUÁRIO RANDOM ---------- */
     const allUsers = await storage.read();
     const users = Object.entries(allUsers.users)
       .map(([telegramId, data]) => ({ telegramId, ...data }))
-      .filter((u) => u.wallet && !u.blocked);
+      .filter(u => u.wallet && !u.blocked);
 
     if (!users.length) {
-      console.log("⚠ Nenhum usuário elegível.");
       dropRunning = false;
       return;
     }
 
     const randomUser = users[Math.floor(Math.random() * users.length)];
-    console.log("👤 USER:", randomUser.telegramId, randomUser.username, randomUser.wallet);
 
-    // 4) BÔNUS NFT FOUNDERS (5% por NFT • máx 25%)
-    const founderCount = await getFounderCount(String(randomUser.wallet || "").trim());
+    /* ---------- 4) BÔNUS FOUNDER ---------- */
+    const wallet = String(randomUser.wallet || "").trim();
+    const founderCount = await getFounderCount(wallet);
+
     const bonusPct = Math.min(founderCount * 0.05, 0.25);
-
     const bonusHbr = Number((baseHbr * bonusPct).toFixed(4));
     const finalHbr = Number((baseHbr + bonusHbr).toFixed(4));
 
-    console.log({
-      founderCount,
-      bonusPct,
-      baseHbr,
-      bonusHbr,
-      finalHbr
-    });
-
-    // 5) ATUALIZAR SALDO DO USUÁRIO
+    /* ---------- 5) SALDO ---------- */
     const today = Math.floor(Date.now() / (24 * 3600 * 1000));
 
+    let {
+      balance = 0,
+      totalAllTime = 0,
+      totalToday = 0,
+      totalWithdrawn = 0,
+      lastDropDay = today
+    } = randomUser;
+
+    if (lastDropDay !== today) {
+      totalToday = 0;
+      lastDropDay = today;
+    }
+
+    totalAllTime += finalHbr;
+    totalToday += finalHbr;
+    balance = totalAllTime - totalWithdrawn;
+
+    await storage.setUser(randomUser.telegramId, {
+      balance,
+      totalAllTime,
+      totalToday,
+      totalWithdrawn,
+      lastDropDay,
+      wallet,
+      username: randomUser.username
+    });
+
+    /* ---------- 6) MENSAGEM ---------- */
+    const GROUP_ID = process.env.GROUP_ID;
+
+    if (GROUP_ID) {
+      if (founderCount > 0) {
+        await bot.sendMessage(
+          GROUP_ID,
+          `🔥 *DROP FOUNDER!*\n` +
+          `👤 @${randomUser.username}\n` +
+          `👑 Founders: *${founderCount}*\n` +
+          `🎁 Base: \`${baseHbr} HBR\`\n` +
+          `💎 Bônus ${(bonusPct * 100).toFixed(0)}%: \`+${bonusHbr} HBR\`\n` +
+          `🚀 Total: \`${finalHbr} HBR\`\n` +
+          `💲 USD: \`$${usdReward}\``,
+          { parse_mode: "Markdown" }
+        );
+      } else {
+        await bot.sendMessage(
+          GROUP_ID,
+          `🎉 *DROP ENTREGUE!*\n` +
+          `👤 @${randomUser.username}\n` +
+          `📦 \`${finalHbr} HBR\`\n` +
+          `💲 USD: \`$${usdReward}\``,
+          { parse_mode: "Markdown" }
+        );
+      }
+    }
+
+    /* ---------- 7) UPDATE LAST DROP ---------- */
+    await updateLastDropTimestamp(new Date());
+
+  } catch (err) {
+    console.error("❌ DROP ERROR:", err);
+  }
+
+  dropRunning = false;
+}
+
+
+/* ========================================================================
+   START DROPPER
+======================================================================= */
+async function startDropper(bot) {
+  const last = await getLastDropTimestamp();
+  const now = Date.now();
+
+  let nextDropIn = DROP_INTERVAL;
+
+  if (last) {
+    const diff = now - new Date(last).getTime();
+    nextDropIn = diff >= DROP_INTERVAL ? 0 : DROP_INTERVAL - diff;
+  }
+
+  setTimeout(() => {
+    performDrop(bot);
+    setInterval(() => performDrop(bot), DROP_INTERVAL);
+  }, nextDropIn);
+}
+
+
+module.exports = {
+  startDropper,
+  performDrop
+};
     let {
       balance = 0,
       totalAllTime = 0,
