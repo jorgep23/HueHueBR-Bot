@@ -114,40 +114,56 @@ async function performDrop(bot) {
     });
 
 
-    /* ---------- 6) MSG GROUP ---------- */
-    const GROUP_ID = process.env.GROUP_ID;
+    /* ---------- 6) MENSAGEM NO GRUPO ---------- */
+const GROUP = process.env.GROUP_ID;
 
-    if (GROUP_ID) {
+if (GROUP) {
 
-      if (founderCount > 0) {
+  const showBase  = baseHbr.toFixed(4);
+  const showBonus = bonusHbr.toFixed(4);
+  const showFinal = finalHbr.toFixed(4);
+  const showUsd   = usdReward.toFixed(6);
 
-        await bot.sendMessage(
-          GROUP_ID,
-          `🔥 *DROP FOUNDER!*\n` +
-          `👤 @${randomUser.username}\n` +
-          `👑 NFT Founders: *${founderCount}*\n\n` +
-          `🎁 Base: \`${baseHbr} HBR\`\n` +
-          `💎 Bônus ${(bonusPct * 100).toFixed(0)}%: \`+${bonusHbr} HBR\`\n` +
-          `🚀 Total: \`${finalHbr} HBR\`\n\n` +
-          `💲 USD: \`$${usdReward}\`\n` +
-          `⏱ Próximo drop → 20 minutos.`,
-          { parse_mode: "Markdown" }
-        );
+  /* ==================================================
+     FOUNDER DROP — VISUAL PREMIUM
+  ================================================== */
+  if (founderCount > 0) {
 
-      } else {
+    await bot.sendMessage(
+      GROUP,
+      `🚀🚀🚀\n` +
+      `*🔥 DROP FOUNDER EM AÇÃO!* \n` +
+      `🚀🚀🚀\n\n` +
+      `👤 *Usuário:* @${randomUser.username}\n` +
+      `👑 *NFT Founders:* ${founderCount}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🎁 Base: \`${showBase} HBR\`\n` +
+      `💎 Bônus: \`+${showBonus} HBR\`\n` +
+      `🚀 *Total:* \`${showFinal} HBR\`\n` +
+      `💲 Valor: \`$${showUsd}\`\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `✨ *Founders ganham até +25% por drop!*\n` +
+      `⏱ Próximo drop → 20 min`,
+      { parse_mode: "Markdown" }
+    );
 
-        await bot.sendMessage(
-          GROUP_ID,
-          `🎉 *DROP ENTREGUE!*\n` +
-          `👤 @${randomUser.username}\n` +
-          `📦 \`${finalHbr} HBR\`\n` +
-          `💲 USD: \`$${usdReward}\`\n` +
-          `⏱ Próximo → 20 minutos.`,
-          { parse_mode: "Markdown" }
-        );
+  } else {
 
-      }
-    }
+    /* ==================================================
+       DROP NORMAL — LIMPO E BONITO
+    ================================================== */
+    await bot.sendMessage(
+      GROUP,
+      `🎉 *DROP ENTREGUE!*\n` +
+      `👤 @${randomUser.username}\n\n` +
+      `📦 Recompensa: \`${showFinal} HBR\`\n` +
+      `💲 USD: \`$${showUsd}\`\n\n` +
+      `⏱ Próximo drop → 20 min`,
+      { parse_mode: "Markdown" }
+    );
+  }
+}
+
 
 
     /* ---------- 7) LAST DROP ---------- */
